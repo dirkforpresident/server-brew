@@ -3,108 +3,228 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FreeTetra — freies TETRA-Netz für deine Region</title>
-<meta name="description" content="Freier BREW-Server fürs Amateurfunk-TETRA. Vernetzt FM-Repeater, TETRA-BlueStations und Eigenbau-TMO — damit Regionen wieder lebendig werden. Kein Hotspot-Zirkus.">
+<title>FreeTetra — freies TETRA-Netz für Funkamateure</title>
+<meta name="description" content="Ein freier TETRA-Verbund: vernetzt FM-Repeater, TETRA-BlueStations und Eigenbau-TMO-Zellen, damit Regionen wieder Betrieb haben. Nutz unseren Server oder host deinen eigenen. Kein Hotspot-Zirkus.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
   :root{
-    --bg:#0b0c0f; --panel:#14161c; --line:#23262f;
-    --fg:#e7e8ec; --muted:#9a9da6; --accent:#f0a742;
-    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    /* dark-first: die Ästhetik eines beleuchteten Funkgeräts */
+    --bg:#0a0b0d; --bg2:#0d0f13; --panel:#14161d; --panel2:#181b23;
+    --line:#242833; --line2:#2f3440;
+    --fg:#e9eaee; --muted:#8f939d; --faint:#5b606b;
+    --accent:#f2a83c; --accent-dim:#c9862b; --live:#54e08a;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --maxw:60rem; --prose:39rem;
   }
   @media (prefers-color-scheme:light){
-    :root{ --bg:#f6f6f4; --panel:#ffffff; --line:#e4e4dd; --fg:#1a1b1e; --muted:#6b6d73; --accent:#b26a00; }
+    :root{
+      --bg:#f5f4f1; --bg2:#efeeea; --panel:#ffffff; --panel2:#faf9f6;
+      --line:#e5e3dc; --line2:#dcd9cf;
+      --fg:#1b1c1f; --muted:#63666e; --faint:#9a9ba1;
+      --accent:#b06a06; --accent-dim:#8a5305; --live:#1f9d57;
+    }
   }
   *{box-sizing:border-box}
-  html,body{margin:0}
+  html{scroll-behavior:smooth}
   body{
-    background:var(--bg); color:var(--fg); font-family:var(--sans);
-    line-height:1.62; -webkit-font-smoothing:antialiased;
-    padding:2.6rem 1.25rem 3.5rem; display:flex; justify-content:center;
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:var(--sans); font-size:16px; line-height:1.62;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   }
-  main{width:100%; max-width:34rem}
-  .brand{display:flex; align-items:center; gap:.6rem; font-family:var(--mono); font-weight:600; letter-spacing:.02em; font-size:1.05rem}
-  .dot{width:.62rem; height:.62rem; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 var(--accent); animation:p 2.4s ease-out infinite}
-  @keyframes p{0%{box-shadow:0 0 0 0 rgba(240,167,66,.55)}70%{box-shadow:0 0 0 .7rem rgba(240,167,66,0)}100%{box-shadow:0 0 0 0 rgba(240,167,66,0)}}
-  @media (prefers-reduced-motion:reduce){.dot{animation:none}}
-  h1{font-size:2rem; line-height:1.12; margin:1.5rem 0 .5rem; font-weight:660; letter-spacing:-.01em; text-wrap:balance}
-  .lede{color:var(--muted); margin:.2rem 0 0; font-size:1.08rem}
-  .eyebrow{font-size:.72rem; text-transform:uppercase; letter-spacing:.15em; color:var(--accent); font-weight:600; margin:2.4rem 0 .5rem}
-  h2{font-size:1.12rem; margin:.1rem 0 .5rem; font-weight:640}
-  p{margin:.65rem 0}
-  strong{color:var(--fg); font-weight:640}
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:1.05rem 1.2rem; margin:.9rem 0}
-  .card .h{font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:600; margin:0 0 .8rem}
-  dl.conn{margin:0; display:grid; grid-template-columns:auto 1fr; gap:.5rem 1rem; font-family:var(--mono); font-size:.92rem}
-  dl.conn dt{color:var(--muted)}
-  dl.conn dd{margin:0; word-break:break-all}
-  dl.conn dd b{color:var(--accent); font-weight:600}
-  .gloss{margin:.4rem 0 0}
-  .gloss div{margin:.55rem 0}
-  .gloss b{color:var(--accent); font-family:var(--mono); font-size:.9rem}
-  ul{margin:.5rem 0; padding-left:1.15rem}
-  li{margin:.3rem 0}
-  .note{font-size:.9rem; color:var(--muted)}
-  footer{margin-top:2.6rem; padding-top:1.1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.82rem; display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 1.5rem}
   a{color:var(--accent); text-decoration:none}
-  a:hover{text-decoration:underline}
+  a:hover{text-decoration:underline; text-underline-offset:3px}
+  h1,h2,h3{line-height:1.12; letter-spacing:-.015em; text-wrap:balance}
+  .prose{max-width:var(--prose)}
+  .eyebrow{font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.22em; color:var(--accent); font-weight:500}
+
+  /* ── Topbar ── */
+  header{position:sticky; top:0; z-index:5; backdrop-filter:blur(9px);
+    background:var(--bg2); background:color-mix(in srgb, var(--bg) 82%, transparent); border-bottom:1px solid var(--line)}
+  .bar{display:flex; align-items:center; justify-content:space-between; height:3.5rem}
+  .brand{display:flex; align-items:center; gap:.55rem; font-family:var(--mono); font-weight:600; font-size:1.02rem; letter-spacing:.01em}
+  .live{width:.6rem; height:.6rem; border-radius:50%; background:var(--live); box-shadow:0 0 0 0 var(--live); animation:pulse 2.6s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 55%,transparent)}70%{box-shadow:0 0 0 .55rem transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .barlinks{display:flex; gap:1.5rem; font-size:.9rem; color:var(--muted)}
+  .barlinks a{color:var(--muted)}
+  .barlinks a:hover{color:var(--fg); text-decoration:none}
+  @media (max-width:640px){ .barlinks{display:none} }
+
+  /* ── Hero ── */
+  .hero{padding:4.2rem 0 2.2rem; border-bottom:1px solid var(--line);
+    background:radial-gradient(120% 90% at 82% -10%, color-mix(in srgb,var(--accent) 9%, transparent), transparent 60%)}
+  .hero h1{font-size:clamp(2.15rem,5.4vw,3.5rem); font-weight:700; margin:.9rem 0 .7rem}
+  .hero h1 .amber{color:var(--accent)}
+  .hero .sub{font-size:clamp(1.05rem,2vw,1.22rem); color:var(--muted); max-width:42rem; margin:0}
+  .cta{display:flex; flex-wrap:wrap; gap:.7rem; margin-top:1.7rem}
+  .btn{display:inline-flex; align-items:center; gap:.5rem; padding:.62rem 1.05rem; border-radius:9px; font-weight:600; font-size:.94rem; border:1px solid transparent}
+  .btn.primary{background:var(--accent); color:#1a1205}
+  .btn.primary:hover{background:var(--accent-dim); text-decoration:none}
+  .btn.ghost{border-color:var(--line2); color:var(--fg)}
+  .btn.ghost:hover{border-color:var(--accent); text-decoration:none}
+
+  /* ── Spektrum-/Pegelanzeige (das „on-air"-Motiv) ── */
+  .spectrum{display:flex; align-items:flex-end; gap:3px; height:56px; margin-top:2.4rem; opacity:.9}
+  .spectrum i{flex:1 1 0; min-width:2px; background:linear-gradient(var(--accent),color-mix(in srgb,var(--accent) 25%,transparent));
+    border-radius:2px 2px 0 0; height:22%; transform-origin:bottom;
+    animation:eq 1.15s calc(var(--i) * -0.085s) infinite ease-in-out}
+  @keyframes eq{0%,100%{height:16%}50%{height:92%}}
+  @media (prefers-reduced-motion:reduce){ .spectrum i{animation:none; height:46%} }
+
+  /* ── Sektionen ── */
+  section{padding:3.2rem 0; border-bottom:1px solid var(--line)}
+  section h2{font-size:clamp(1.5rem,3vw,1.95rem); font-weight:600; margin:.55rem 0 .9rem}
+  section p{margin:.7rem 0}
+  strong{font-weight:600}
+  .lead{font-size:1.06rem}
+  ul.checks{list-style:none; padding:0; margin:1rem 0; max-width:var(--prose)}
+  ul.checks li{position:relative; padding-left:1.7rem; margin:.6rem 0}
+  ul.checks li::before{content:""; position:absolute; left:.15rem; top:.62em; width:.5rem; height:.5rem; border-radius:50%; background:var(--accent)}
+
+  /* ── Zwei-Wege-Grid ── */
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin-top:1.4rem}
+  @media (max-width:720px){ .two{grid-template-columns:1fr} }
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1.5rem 1.6rem; display:flex; flex-direction:column}
+  .card .tag{font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted)}
+  .card h3{font-size:1.22rem; margin:.5rem 0 .5rem; font-weight:600}
+  .card p{color:var(--muted); font-size:.96rem; margin:.3rem 0 1rem}
+  .card .spacer{flex:1}
+  .conn{margin:0 0 1.1rem; display:grid; grid-template-columns:auto 1fr; gap:.5rem .9rem; font-family:var(--mono); font-size:.9rem}
+  .conn dt{color:var(--faint)}
+  .conn dd{margin:0; word-break:break-all}
+  .conn dd b{color:var(--accent); font-weight:600}
+
+  /* ── Glossar ── */
+  .gloss{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-top:1.3rem}
+  @media (max-width:720px){ .gloss{grid-template-columns:1fr} }
+  .gloss div{border-left:2px solid var(--accent); padding:.15rem 0 .15rem 1rem}
+  .gloss b{font-family:var(--mono); font-size:.92rem; color:var(--accent); display:block; margin-bottom:.25rem}
+  .gloss span{color:var(--muted); font-size:.94rem}
+
+  .note{color:var(--muted); font-size:.9rem; max-width:var(--prose)}
+  footer{padding:2.2rem 0 3rem; color:var(--muted); font-size:.85rem}
+  footer .row{display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:center}
+  footer b{color:var(--fg)}
 </style>
 </head>
 <body>
-<main>
-  <div class="brand"><span class="dot" aria-hidden="true"></span>FreeTetra</div>
 
-  <h1>Ein freies TETRA-Netz für deine Region.</h1>
-  <p class="lede">Bringt die verstreuten Stationen einer Gegend zusammen — TETRA-BlueStations,
-  Eigenbau-TMO-Repeater und ganz normale FM-Relais — damit wieder Betrieb ist. Kein Hotspot-Zirkus,
-  kein „ganz Deutschland an einem Kabel". Echtes Funken, gute Sprache, dein Umkreis.</p>
-
-  <p class="eyebrow">Worum es geht</p>
-  <p>Überall stehen kleine <strong>Inseln</strong>: hier ein FM-Relais mit drei Stammnutzern, da eine
-  BlueStation, dort ein Eigenbau-TMO — jede für sich still. FreeTetra hängt sie an <em>einen</em> Verbund.
-  <strong>Nicht</strong>, um bundesweit alles zu verdrahten, sondern damit <strong>Regionen wieder lebendig</strong>
-  werden. Wer auftastet, trifft die anderen aus der Gegend — egal auf welchem Gerät.</p>
-
-  <p class="eyebrow">Für FM-Funker — ehrlich</p>
-  <p>Als FM-Teilnehmer kriegst du <strong>nicht</strong> den ganzen TETRA-Komfort — SDS, Einzelrufe,
-  Statusmeldungen, Verschlüsselung bleiben der TETRA-Seite vorbehalten. Was du kriegst, zählt aber:</p>
-  <ul>
-    <li>Du redest in <strong>TETRA-Sprachqualität</strong> (ACELP) mit allen mit — klarer als der Sound aus DMR-Hotspots.</li>
-    <li><strong>Kein Internet-Handy-Zirkus.</strong> Echtes Relais, echte Aussendung, dein Rufzeichen auf der Luft.</li>
-    <li>Dein Relais braucht nur SvxLink + das freie Modul — Talkgroup per DTMF, sonst nichts Neues zu lernen.</li>
-  </ul>
-
-  <p class="eyebrow">Kurz erklärt</p>
-  <div class="gloss">
-    <div><b>BREW</b> — das (WebSocket-)Protokoll, über das sich TETRA-Stationen vernetzen. FreeTetra ist ein <em>freier</em> BREW-Server, offen für alle Funkamateure.</div>
-    <div><b>ACELP</b> — der Sprach-Codec von TETRA. Sauber und verständlich; alle im Verbund reden in derselben Qualität.</div>
-    <div><b>Talkgroup (GSSI)</b> — der „Kanal". Per DTMF wählst du, auf welcher Gruppe du QRV bist.</div>
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="live" aria-hidden="true"></span>FreeTetra</div>
+    <nav class="barlinks">
+      <a href="#worum">Worum es geht</a>
+      <a href="#mitmachen">Mitmachen</a>
+      <a href="#hosten">Selbst hosten</a>
+      <a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">FM-Modul</a>
+    </nav>
   </div>
+</header>
 
-  <p class="eyebrow">Mitmachen</p>
-  <div class="card">
-    <div class="h">Verbindung</div>
-    <dl class="conn">
-      <dt>Server</dt><dd><b>wss://freetetra.de/brew/</b></dd>
-      <dt>Username</dt><dd>deine RadioID / ISSI</dd>
-      <dt>Passwort</dt><dd><b>freetetra</b></dd>
-      <dt>Realm</dt><dd>brew</dd>
-    </dl>
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Freier TETRA-Verbund · Amateurfunk</p>
+    <h1>Aus vielen kleinen Inseln<br>ein <span class="amber">lebendiges Netz</span>.</h1>
+    <p class="sub">Vernetzt FM-Repeater, TETRA-BlueStations und Eigenbau-TMO-Zellen zu einem gemeinsamen
+    Sprach-Netz — damit deine Region wieder Betrieb hat. Offen für jeden mit RadioID. Kein Hotspot-Zirkus.</p>
+    <div class="cta">
+      <a class="btn primary" href="#mitmachen">Mitmachen →</a>
+      <a class="btn ghost" href="#hosten">Eigenen Server hosten</a>
+    </div>
+    <div class="spectrum" aria-hidden="true">
+      <i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i>
+      <i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i>
+      <i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i><i style="--i:14"></i>
+      <i style="--i:15"></i><i style="--i:16"></i><i style="--i:17"></i><i style="--i:18"></i><i style="--i:19"></i>
+      <i style="--i:20"></i><i style="--i:21"></i><i style="--i:22"></i><i style="--i:23"></i><i style="--i:24"></i>
+      <i style="--i:25"></i><i style="--i:26"></i><i style="--i:27"></i><i style="--i:28"></i><i style="--i:29"></i>
+      <i style="--i:30"></i><i style="--i:31"></i><i style="--i:32"></i><i style="--i:33"></i><i style="--i:34"></i>
+    </div>
   </div>
-  <p class="note">Trag die Werte in deine Station/dein Modul ein, wähl eine Talkgroup — fertig. Wer eine RadioID hat, ist dabei; kein Account, keine Anmeldung.</p>
+</div>
 
-  <div class="card">
-    <div class="h">FM-Repeater anbinden</div>
-    <p style="margin:0 0 .7rem">Du betreibst ein <strong>SvxLink&#8202;/&#8202;OpenRepeater-FM-Relais</strong>? Häng es mit dem freien Modul <strong style="color:var(--accent)">ModuleTetraBrew</strong> an FreeTetra — Installation mit einem Befehl, Talkgroup-Wahl per DTMF, deutsche Sprachansagen.</p>
-    <p style="margin:0"><a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">→&nbsp;ModuleTetraBrew auf GitHub</a></p>
+<section id="worum">
+  <div class="wrap prose">
+    <p class="eyebrow">Worum es geht</p>
+    <h2>Überall kleine, stille Inseln.</h2>
+    <p class="lead">Hier ein FM-Relais mit drei Stammnutzern, da eine BlueStation, dort eine
+    Eigenbau-TMO-Zelle — jede für sich. FreeTetra hängt sie an <em>einen</em> Verbund.</p>
+    <p><strong>Nicht</strong>, um bundesweit alles zu verkabeln, sondern damit
+    <strong>Regionen wieder lebendig</strong> werden. Ihr organisiert euch über <strong>Talkgroups</strong>:
+    sucht euch für eure Gegend eine, bringt eure Relais und Stationen drauf — und wer auftastet, trifft die
+    anderen aus der Region. Egal auf welchem Gerät.</p>
   </div>
+</section>
 
-  <p class="note">Community-Server, keine Gewähr, kein Support-Anspruch. Sei nett, keine kommerzielle Nutzung, halt dich ans Bandplan-/AFU-Recht. Wer stört, fliegt.</p>
+<section id="fm">
+  <div class="wrap prose">
+    <p class="eyebrow">Für FM-Funker — ehrlich</p>
+    <h2>Kein Hotspot-Zirkus.</h2>
+    <p>Als FM-Teilnehmer kriegst du <strong>nicht</strong> den ganzen TETRA-Komfort — SDS, Einzelrufe,
+    Statusmeldungen, Verschlüsselung bleiben der TETRA-Seite. Was du kriegst, zählt aber:</p>
+    <ul class="checks">
+      <li>Du redest in <strong>TETRA-Sprachqualität</strong> (ACELP) mit allen mit — klarer als der Matsch aus DMR-Hotspots.</li>
+      <li>Echtes Relais, echte Aussendung, <strong>dein Rufzeichen auf der Luft</strong> — kein Internet-Handy-Funk.</li>
+      <li>Dein Relais braucht nur SvxLink + das freie Modul. Talkgroup per DTMF, sonst nichts Neues zu lernen.</li>
+    </ul>
+  </div>
+</section>
 
-  <footer>
-    <span>betrieben von <a href="mailto:do1xx@pm.me">DO1XX</a> · schreib mir gern</span>
-    <span>freier Community-Server</span>
-  </footer>
-</main>
+<section id="mitmachen">
+  <div class="wrap">
+    <p class="eyebrow">Zwei Wege</p>
+    <h2>Nutz unseren Server — oder host deinen eigenen.</h2>
+    <div class="two">
+      <div class="card" id="mit">
+        <span class="tag">Mitmachen</span>
+        <h3>Verbinde dich mit FreeTetra</h3>
+        <p>Der offene Community-Server. Wer eine RadioID hat, ist dabei — kein Account, keine Anmeldung. Ideal zum Ausprobieren und um deine Region aufs Netz zu bringen.</p>
+        <dl class="conn">
+          <dt>Server</dt><dd><b>wss://freetetra.de/brew/</b></dd>
+          <dt>Username</dt><dd>deine RadioID / ISSI</dd>
+          <dt>Passwort</dt><dd><b>freetetra</b></dd>
+          <dt>Realm</dt><dd>brew</dd>
+        </dl>
+        <div class="spacer"></div>
+        <p style="margin:0"><a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">FM-Repeater anbinden →</a></p>
+      </div>
+      <div class="card" id="hosten">
+        <span class="tag">Selbst hosten</span>
+        <h3>Dein eigener BREW-Node</h3>
+        <p>Der Server ist Open Source — reines python3, eine Datei, keine Datenbank. Jede Region oder Gruppe kann ihren <strong>eigenen</strong> FreeTetra fahren. So entstehen viele kleine Netze statt eines zentralen.</p>
+        <dl class="conn">
+          <dt>Stack</dt><dd>python3 · websockets</dd>
+          <dt>Auth</dt><dd>Open-Mode + Sperrliste</dd>
+          <dt>TLS</dt><dd>nginx davor</dd>
+        </dl>
+        <div class="spacer"></div>
+        <p style="margin:0"><a href="https://github.com/dirkforpresident/server-brew">Server-Code auf GitHub →</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="erklaert">
+  <div class="wrap">
+    <p class="eyebrow">Kurz erklärt</p>
+    <h2>Für alle, die's genau wissen wollen.</h2>
+    <div class="gloss">
+      <div><b>BREW</b><span>Das WebSocket-Protokoll, über das sich TETRA-Stationen vernetzen. FreeTetra ist ein freier BREW-Server.</span></div>
+      <div><b>ACELP</b><span>Der Sprach-Codec von TETRA. Sauber und verständlich — alle im Verbund reden in derselben Qualität.</span></div>
+      <div><b>Talkgroup · GSSI</b><span>Der „Kanal". Per DTMF wählst du, auf welcher Gruppe du QRV bist — so entstehen die Regionen.</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <span>betrieben von <a href="mailto:do1xx@pm.me"><b>DO1XX</b></a> · schreib mir gern</span>
+    <span>freies Community-Projekt · keine Gewähr · haltet euch ans AFU-Recht</span>
+  </div>
+</footer>
+
 </body>
 </html>
