@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeTetra — freies TETRA-Netz für deine Region</title>
+<meta name="description" content="Freier BREW-Server fürs Amateurfunk-TETRA. Vernetzt FM-Repeater, TETRA-BlueStations und Eigenbau-TMO — damit Regionen wieder lebendig werden. Kein Hotspot-Zirkus.">
+<style>
+  :root{
+    --bg:#0b0c0f; --panel:#14161c; --line:#23262f;
+    --fg:#e7e8ec; --muted:#9a9da6; --accent:#f0a742;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#f6f6f4; --panel:#ffffff; --line:#e4e4dd; --fg:#1a1b1e; --muted:#6b6d73; --accent:#b26a00; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--fg); font-family:var(--sans);
+    line-height:1.62; -webkit-font-smoothing:antialiased;
+    padding:2.6rem 1.25rem 3.5rem; display:flex; justify-content:center;
+  }
+  main{width:100%; max-width:34rem}
+  .brand{display:flex; align-items:center; gap:.6rem; font-family:var(--mono); font-weight:600; letter-spacing:.02em; font-size:1.05rem}
+  .dot{width:.62rem; height:.62rem; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 var(--accent); animation:p 2.4s ease-out infinite}
+  @keyframes p{0%{box-shadow:0 0 0 0 rgba(240,167,66,.55)}70%{box-shadow:0 0 0 .7rem rgba(240,167,66,0)}100%{box-shadow:0 0 0 0 rgba(240,167,66,0)}}
+  @media (prefers-reduced-motion:reduce){.dot{animation:none}}
+  h1{font-size:2rem; line-height:1.12; margin:1.5rem 0 .5rem; font-weight:660; letter-spacing:-.01em; text-wrap:balance}
+  .lede{color:var(--muted); margin:.2rem 0 0; font-size:1.08rem}
+  .eyebrow{font-size:.72rem; text-transform:uppercase; letter-spacing:.15em; color:var(--accent); font-weight:600; margin:2.4rem 0 .5rem}
+  h2{font-size:1.12rem; margin:.1rem 0 .5rem; font-weight:640}
+  p{margin:.65rem 0}
+  strong{color:var(--fg); font-weight:640}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:1.05rem 1.2rem; margin:.9rem 0}
+  .card .h{font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:600; margin:0 0 .8rem}
+  dl.conn{margin:0; display:grid; grid-template-columns:auto 1fr; gap:.5rem 1rem; font-family:var(--mono); font-size:.92rem}
+  dl.conn dt{color:var(--muted)}
+  dl.conn dd{margin:0; word-break:break-all}
+  dl.conn dd b{color:var(--accent); font-weight:600}
+  .gloss{margin:.4rem 0 0}
+  .gloss div{margin:.55rem 0}
+  .gloss b{color:var(--accent); font-family:var(--mono); font-size:.9rem}
+  ul{margin:.5rem 0; padding-left:1.15rem}
+  li{margin:.3rem 0}
+  .note{font-size:.9rem; color:var(--muted)}
+  footer{margin-top:2.6rem; padding-top:1.1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.82rem; display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><span class="dot" aria-hidden="true"></span>FreeTetra</div>
+
+  <h1>Ein freies TETRA-Netz für deine Region.</h1>
+  <p class="lede">Bringt die verstreuten Stationen einer Gegend zusammen — TETRA-BlueStations,
+  Eigenbau-TMO-Repeater und ganz normale FM-Relais — damit wieder Betrieb ist. Kein Hotspot-Zirkus,
+  kein „ganz Deutschland an einem Kabel". Echtes Funken, gute Sprache, dein Umkreis.</p>
+
+  <p class="eyebrow">Worum es geht</p>
+  <p>Überall stehen kleine <strong>Inseln</strong>: hier ein FM-Relais mit drei Stammnutzern, da eine
+  BlueStation, dort ein Eigenbau-TMO — jede für sich still. FreeTetra hängt sie an <em>einen</em> Verbund.
+  <strong>Nicht</strong>, um bundesweit alles zu verdrahten, sondern damit <strong>Regionen wieder lebendig</strong>
+  werden. Wer auftastet, trifft die anderen aus der Gegend — egal auf welchem Gerät.</p>
+
+  <p class="eyebrow">Für FM-Funker — ehrlich</p>
+  <p>Als FM-Teilnehmer kriegst du <strong>nicht</strong> den ganzen TETRA-Komfort — SDS, Einzelrufe,
+  Statusmeldungen, Verschlüsselung bleiben der TETRA-Seite vorbehalten. Was du kriegst, zählt aber:</p>
+  <ul>
+    <li>Du redest in <strong>TETRA-Sprachqualität</strong> (ACELP) mit allen mit — klarer als der Sound aus DMR-Hotspots.</li>
+    <li><strong>Kein Internet-Handy-Zirkus.</strong> Echtes Relais, echte Aussendung, dein Rufzeichen auf der Luft.</li>
+    <li>Dein Relais braucht nur SvxLink + das freie Modul — Talkgroup per DTMF, sonst nichts Neues zu lernen.</li>
+  </ul>
+
+  <p class="eyebrow">Kurz erklärt</p>
+  <div class="gloss">
+    <div><b>BREW</b> — das (WebSocket-)Protokoll, über das sich TETRA-Stationen vernetzen. FreeTetra ist ein <em>freier</em> BREW-Server, offen für alle Funkamateure.</div>
+    <div><b>ACELP</b> — der Sprach-Codec von TETRA. Sauber und verständlich; alle im Verbund reden in derselben Qualität.</div>
+    <div><b>Talkgroup (GSSI)</b> — der „Kanal". Per DTMF wählst du, auf welcher Gruppe du QRV bist.</div>
+  </div>
+
+  <p class="eyebrow">Mitmachen</p>
+  <div class="card">
+    <div class="h">Verbindung</div>
+    <dl class="conn">
+      <dt>Server</dt><dd><b>wss://freetetra.de/brew/</b></dd>
+      <dt>Username</dt><dd>deine RadioID / ISSI</dd>
+      <dt>Passwort</dt><dd><b>freetetra</b></dd>
+      <dt>Realm</dt><dd>brew</dd>
+    </dl>
+  </div>
+  <p class="note">Trag die Werte in deine Station/dein Modul ein, wähl eine Talkgroup — fertig. Wer eine RadioID hat, ist dabei; kein Account, keine Anmeldung.</p>
+
+  <div class="card">
+    <div class="h">FM-Repeater anbinden</div>
+    <p style="margin:0 0 .7rem">Du betreibst ein <strong>SvxLink&#8202;/&#8202;OpenRepeater-FM-Relais</strong>? Häng es mit dem freien Modul <strong style="color:var(--accent)">ModuleTetraBrew</strong> an FreeTetra — Installation mit einem Befehl, Talkgroup-Wahl per DTMF, deutsche Sprachansagen.</p>
+    <p style="margin:0"><a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">→&nbsp;ModuleTetraBrew auf GitHub</a></p>
+  </div>
+
+  <p class="note">Community-Server, keine Gewähr, kein Support-Anspruch. Sei nett, keine kommerzielle Nutzung, halt dich ans Bandplan-/AFU-Recht. Wer stört, fliegt.</p>
+
+  <footer>
+    <span>betrieben von <a href="mailto:do1xx@pm.me">DO1XX</a> · schreib mir gern</span>
+    <span>freier Community-Server</span>
+  </footer>
+</main>
+</body>
+</html>

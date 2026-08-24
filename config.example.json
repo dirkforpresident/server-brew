@@ -1,0 +1,9 @@
+{
+  "server":          { "host": "127.0.0.1", "port": 8443 },
+  "open":            true,
+  "open_password":   "freetetra",
+  "users":           {},
+  "blocklist":       [],
+  "echo_gssis":      [9],
+  "broadcast_groups": false
+}

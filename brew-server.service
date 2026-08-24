@@ -1,0 +1,16 @@
+[Unit]
+Description=TETRA Brew Protocol Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/brew
+ExecStart=/usr/bin/python3 /opt/brew/server.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
