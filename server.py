@@ -11,10 +11,12 @@ Routing per Talkgroup (GSSI): wer auf eine GSSI affiliiert, hört deren Gruppenr
 
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import os
 import struct
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -69,6 +71,12 @@ SVC_QUERY = 0x01
 SVC_RESPONSE = 0x02
 
 REALM = "brew"
+
+# Offene Sessions (Digest-OK, aber WS-Upgrade noch nicht erfolgt) verfallen schnell:
+# der echte Client verbindet sofort. Verhindert unbegrenztes Wachstum durch Clients,
+# die nur den Handshake machen und nie upgraden.
+PENDING_TTL = 30.0      # Sekunden bis eine offene Session verfällt
+PENDING_MAX = 2048      # harte Obergrenze offener Sessions
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +178,8 @@ class BrewServer:
         ha2 = _md5(f"{method}:{uri}")
         expected = _md5(f"{ha1}:{p.get('nonce','')}:{p.get('nc','')}:"
                         f"{p.get('cnonce','')}:{p.get('qop','auth')}:{ha2}")
-        if expected == p.get("response", ""):
+        # Konstant-zeit-Vergleich (kein Timing-Leak beim Auth-Check).
+        if hmac.compare_digest(expected, p.get("response", "")):
             return (username, callsign)
         return None
 
@@ -399,6 +408,13 @@ class BrewServer:
     # HTTP-Digest-Handshake + WebSocket
     # ------------------------------------------------------------------
 
+    def _prune_pending(self):
+        """Abgelaufene offene Sessions (kein WS-Upgrade) entfernen."""
+        now = time.monotonic()
+        stale = [s for s, (_, _, ts) in self.pending_sessions.items() if now - ts > PENDING_TTL]
+        for s in stale:
+            self.pending_sessions.pop(s, None)
+
     def process_request(self, connection, request):
         """GET /brew/ -> Digest-Auth -> 200 mit Session-Pfad. /brew/<uuid> -> WS-Upgrade."""
         path = request.path
@@ -415,8 +431,14 @@ class BrewServer:
             return Response(401, "Unauthorized", headers, b"Authentication required")
 
         user_id, callsign = self.verify_digest(auth, "GET", path)
+        self._prune_pending()
+        if len(self.pending_sessions) >= PENDING_MAX:
+            log.warning("Zu viele offene Sessions (%d) — weise ab.", len(self.pending_sessions))
+            headers = Headers()
+            headers["Content-Type"] = "text/plain"
+            return Response(503, "Service Unavailable", headers, b"Too many pending sessions")
         session_id = str(uuid.uuid4())
-        self.pending_sessions[session_id] = (user_id, callsign)
+        self.pending_sessions[session_id] = (user_id, callsign, time.monotonic())
         log.info("Session %s für %s (%s)", session_id[:8], callsign, user_id)
         body = f"/brew/{session_id}".encode()
         headers = Headers()
@@ -430,10 +452,14 @@ class BrewServer:
             await websocket.close(4001, "Invalid path")
             return
         session_id = path[6:].rstrip("/")
-        if session_id not in self.pending_sessions:
+        pending = self.pending_sessions.pop(session_id, None)
+        if pending is None:
             await websocket.close(4002, "Invalid or expired session")
             return
-        user_id, callsign = self.pending_sessions.pop(session_id)
+        user_id, callsign, ts = pending
+        if time.monotonic() - ts > PENDING_TTL:
+            await websocket.close(4002, "Session expired")
+            return
         client = Client(user_id, callsign, session_id, websocket)
         self.clients[session_id] = client
         log.info("WebSocket verbunden: %s", client)
