@@ -1,7 +1,7 @@
 # FreeTetra — freier TETRA-BREW-Server
 
 Ein kleiner, offener **BREW-Server**, der TETRA-Stationen (BlueStations, Eigenbau-TMO-Repeater) und —
-über [**ModuleTetraBrew**](https://github.com/dirkforpresident/svxlink-module-tetrabrew) — auch
+über [**ModuleTetraBrew**](https://github.com/do1xx/svxlink-module-tetrabrew) — auch
 **SvxLink-FM-Repeater** zu einem gemeinsamen Sprach-Netz verbindet. Reines `python3` (asyncio +
 websockets), ~380 Zeilen, keine Datenbank.
 
@@ -71,7 +71,7 @@ location /brew/ {
 ## FM-Repeater anbinden
 
 FM-Relais kommen über das Modul rein → siehe
-[**svxlink-module-tetrabrew**](https://github.com/dirkforpresident/svxlink-module-tetrabrew).
+[**svxlink-module-tetrabrew**](https://github.com/do1xx/svxlink-module-tetrabrew).
 
 ---
 
