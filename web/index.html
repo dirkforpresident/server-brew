@@ -97,6 +97,14 @@
   .conn dd{margin:0; word-break:break-all}
   .conn dd b{color:var(--accent); font-weight:600}
 
+  /* ── Server-Wahl (FreeTetra vs. eigener) ── */
+  .serverpick{display:grid; grid-template-columns:1fr 1fr; gap:1.6rem; margin-top:1.1rem;
+    background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:1.5rem 1.7rem}
+  .serverpick > div + div{border-left:1px solid var(--line); padding-left:1.6rem}
+  .serverpick .tag{font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); display:block; margin-bottom:.8rem}
+  @media (max-width:720px){ .serverpick{grid-template-columns:1fr; gap:1.3rem}
+    .serverpick > div + div{border-left:0; padding-left:0; border-top:1px solid var(--line); padding-top:1.3rem} }
+
   /* ── Glossar ── */
   .gloss{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-top:1.3rem}
   @media (max-width:720px){ .gloss{grid-template-columns:1fr} }
@@ -175,32 +183,37 @@
 
 <section id="mitmachen">
   <div class="wrap">
-    <p class="eyebrow">Zwei Wege</p>
-    <h2>Nutz unseren Server — oder host deinen eigenen.</h2>
+    <p class="eyebrow">Mitmachen</p>
+    <h2>Häng eine Station ans Netz.</h2>
+    <p class="prose" style="color:var(--muted); margin:.2rem 0 0">Zwei Arten von Stationen kommen rein — verbunden mit unserem FreeTetra-Server oder mit deinem eigenen.</p>
     <div class="two">
-      <div class="card" id="mit">
-        <span class="tag">Mitmachen</span>
-        <h3>Verbinde dich mit FreeTetra</h3>
-        <p>Der offene Community-Server. Wer eine RadioID hat, ist dabei — kein Account, keine Anmeldung. Ideal zum Ausprobieren und um deine Region aufs Netz zu bringen.</p>
-        <dl class="conn">
+      <div class="card">
+        <span class="tag">TETRA · TMO</span>
+        <h3>BlueStation &amp; Eigenbau-TMO</h3>
+        <p>Spricht BREW von Haus aus. Zugangsdaten eintragen, deine Talkgroup affiliieren — fertig.</p>
+      </div>
+      <div class="card">
+        <span class="tag">FM-Relais</span>
+        <h3>Über ModuleTetraBrew</h3>
+        <p>SvxLink-/OpenRepeater-Relais kommen über das freie Modul rein. Installation mit einem Befehl, Talkgroup-Wahl per DTMF.</p>
+        <div class="spacer"></div>
+        <p style="margin:0"><a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">Modul auf GitHub →</a></p>
+      </div>
+    </div>
+
+    <div class="serverpick" id="hosten">
+      <div>
+        <span class="tag">Verbinde mit FreeTetra</span>
+        <dl class="conn" style="margin-bottom:0">
           <dt>Server</dt><dd><b>wss://freetetra.de/brew/</b></dd>
-          <dt>Username</dt><dd>deine RadioID / ISSI</dd>
+          <dt>Username</dt><dd>deine RadioID</dd>
           <dt>Passwort</dt><dd><b>freetetra</b></dd>
           <dt>Realm</dt><dd>brew</dd>
         </dl>
-        <div class="spacer"></div>
-        <p style="margin:0"><a href="https://github.com/dirkforpresident/svxlink-module-tetrabrew">FM-Repeater anbinden →</a></p>
       </div>
-      <div class="card" id="hosten">
-        <span class="tag">Selbst hosten</span>
-        <h3>Dein eigener BREW-Node</h3>
-        <p>Der Server ist Open Source — reines python3, eine Datei, keine Datenbank. Jede Region oder Gruppe kann ihren <strong>eigenen</strong> FreeTetra fahren. So entstehen viele kleine Netze statt eines zentralen.</p>
-        <dl class="conn">
-          <dt>Stack</dt><dd>python3 · websockets</dd>
-          <dt>Auth</dt><dd>Open-Mode + Sperrliste</dd>
-          <dt>TLS</dt><dd>nginx davor</dd>
-        </dl>
-        <div class="spacer"></div>
+      <div>
+        <span class="tag">…oder dein eigener Server</span>
+        <p style="color:var(--muted); font-size:.95rem; margin:.6rem 0 1rem">Open Source, reines python3 — jede Region kann ihren eigenen FreeTetra-Node fahren. So entstehen viele kleine Netze statt eines zentralen.</p>
         <p style="margin:0"><a href="https://github.com/dirkforpresident/server-brew">Server-Code auf GitHub →</a></p>
       </div>
     </div>
