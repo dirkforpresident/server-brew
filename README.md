@@ -3,7 +3,7 @@
 Ein kleiner, offener **BREW-Server**, der TETRA-Stationen (BlueStations, Eigenbau-TMO-Repeater) und —
 über [**ModuleTetraBrew**](https://github.com/do1xx/svxlink-module-tetrabrew) — auch
 **SvxLink-FM-Repeater** zu einem gemeinsamen Sprach-Netz verbindet. Reines `python3` (asyncio +
-websockets), ~380 Zeilen, keine Datenbank.
+websockets), ~500 Zeilen, keine Datenbank.
 
 ## Mitmachen oder selbst hosten
 
@@ -20,6 +20,32 @@ websockets), ~380 Zeilen, keine Datenbank.
 - **Open-Mode**: jeder mit RadioID + Community-Passwort darf rein (die RadioID *ist* die Identität).
   Alternativ eine feste User-Liste. Eine **Sperrliste** wirft einzelne wieder raus.
 - **Echo-Test**: ein Ruf auf eine `echo_gssis`-Talkgroup wird aufgenommen und zurückgespielt (Audio-Check).
+
+## Was er kann — und was nicht
+
+Der Kern ist ein **Gruppenruf- und SDS-Router mit Presence**, kein vollständiges TETRA-SwMI.
+
+**Kann:**
+
+- ISSI **Register / Reregister / Deregister**
+- **Affiliation** an Talkgroups (GSSI), auch mehrere GSSIs je ISSI
+- **Gruppenruf** (GROUP_TX → GROUP_IDLE), ACELP-Sprache an alle affiliierten Teilnehmer
+- **SDS**: Gruppen-SDS und Einzel-ISSI (SHORT_TRANSFER), Transfer + Report — unverändert weitergereicht
+- **Presence-Query** (SERVICE): ist ISSI registriert? welches Callsign? welche GSSIs?
+- Auth: feste User-Liste, Open-Mode (RadioID + Passwort), Blocklist
+- Echo-/Papagei-Test, Broadcast-Modus (Ein-Stationen-Test: alle hören alles)
+
+**Kann nicht (teils bewusst weggelassen):**
+
+- **Keine Einzel-/Privatgespräche** (Punkt-zu-Punkt-Voice) — nur Gruppenruf. SHORT_TRANSFER ist der SDS-Vorspann, kein Voice-Einzelruf.
+- **Kein Late-Entry** — die Zielmenge wird bei GROUP_TX fixiert; wer danach affiliiert, hört den laufenden Ruf nicht mehr.
+- **Keine Priorität / Notruf / Preemption**
+- **Kein SDS Store-and-Forward** — Ziel-ISSI offline → Nachricht wird verworfen (keine spätere Zustellung)
+- **Keine Persistenz** — keine Datenbank, kein QSO-/Nachrichten-Log (nur Laufzeit-Logs)
+- **Kein Transcoding** — ACELP wird 1:1 durchgereicht; FM↔TETRA-Wandlung macht das Modul, nicht der Server
+- **Kein echtes SwMI/ISI** — keine TETRA-Call-Control-Signalisierung, keine Mobility, kein Interworking zu echten TETRA-Netzen
+- **Keine serverseitige GSSI-Zugangskontrolle** — jeder registrierte Client darf jede Talkgroup nutzen; die ACL liegt beim Client/Modul (`GSSI_ALLOW`)
+- **Keine SDS-Semantik** — LIP/GPS-Position, Status-Codes o.ä. werden nicht interpretiert, nur Bytes weitergereicht
 
 ## Voraussetzungen
 
@@ -66,7 +92,7 @@ location /brew/ {
 }
 ```
 
-⚠️ `config.json` enthält Passwörter → **nicht committen** (ist in `.gitignore`).
+`config.json` enthält Passwörter → **nicht committen** (ist in `.gitignore`).
 
 ## FM-Repeater anbinden
 
