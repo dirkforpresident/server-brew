@@ -51,6 +51,9 @@ CLASS_CALL = 0xF1
 CLASS_FRAME = 0xF2
 CLASS_ERROR = 0xF3
 CLASS_SERVICE = 0xF4
+CLASS_TRUNK = 0xF5          # Server-zu-Server (Mesh): Steuernachrichten
+TRUNK_HELLO = 0x01         # {name, nonce, ts, mac, prefix}
+TRUNK_INTEREST = 0x02      # {tgs:[...]} — welche TGs der Peer hören will
 
 SUB_DEREGISTER = 0x00
 SUB_REGISTER = 0x01
@@ -125,6 +128,25 @@ class Client:
         return f"Client({self.callsign}/{self.client_id}, session={self.session_id[:8]})"
 
 
+@dataclass(eq=False)
+class Peer:
+    """Ein anderer FreeTetra-Server im Mesh (Trunk-Verbindung)."""
+    name: str
+    secret: str
+    prefix: str = ""                 # TGs mit dieser Vorwahl "gehören" dem Peer
+    url: str = ""                    # wss://…/trunk zum Rauswählen ("" = nur eingehend)
+    tgs: list = None                 # optionaler TG-Filter (Muster), None = alles
+    ws: object = None                # aktive Trunk-Verbindung (None = offline)
+    interest: set = field(default_factory=set)   # GSSIs, die der Peer hören will
+    connected_at: float = 0.0
+
+    def connected(self) -> bool:
+        return self.ws is not None
+
+    def __repr__(self):
+        return f"Peer({self.name}{'/'+self.prefix if self.prefix else ''})"
+
+
 # ---------------------------------------------------------------------------
 # Server
 # ---------------------------------------------------------------------------
@@ -159,6 +181,21 @@ class BrewServer:
 
         # Ein-BTS-/Testmodus: Gruppenruf an ALLE Clients (statt nur affiliierte).
         self.broadcast_groups: bool = config.get("broadcast_groups", False)
+
+        # --- Mesh (optional): mehrere FreeTetra-Server koppeln. Ohne "mesh" =
+        # Standalone, exakt wie bisher. Peering nur mit passendem Shared Secret. ---
+        mesh = config.get("mesh") or {}
+        self.local_prefix: str = str(mesh.get("local_prefix", "") or "")   # meine TG-Vorwahl(en), z.B. "262"
+        self.mesh_tgs = mesh.get("tgs")            # global: welche TGs will ICH ueberhaupt (None = alle)
+        self.peers: dict[str, Peer] = {}
+        for pc in mesh.get("peers", []) or []:
+            p = Peer(name=str(pc["name"]), secret=str(pc["secret"]),
+                     prefix=str(pc.get("prefix", "") or ""), url=str(pc.get("url", "") or ""),
+                     tgs=pc.get("tgs"))
+            self.peers[p.name] = p
+        self.mesh_enabled = bool(self.peers)
+        self.active_call_peers: dict[bytes, set] = {}   # call_uuid -> set(Peer) fuer Trunk-Frames
+        self._interest_dirty = False                    # lokale Affiliationen geaendert -> Peers neu melden
 
     # ------------------------------------------------------------------
     # Auth
@@ -215,6 +252,8 @@ class BrewServer:
                 del self.gssi_affiliations[gssi]
         client.affiliations.pop(issi, None)
         log.info("DEREGISTER ISSI=%d von %s", issi, client)
+        if self.mesh_enabled:
+            self._interest_dirty = True
 
     def affiliate(self, client: Client, issi: int, gssis: list):
         client.affiliations.setdefault(issi, set())
@@ -222,6 +261,8 @@ class BrewServer:
             self.gssi_affiliations.setdefault(gssi, set()).add(issi)
             client.affiliations[issi].add(gssi)
         log.info("AFFILIATE ISSI=%d -> GSSIs=%s auf %s", issi, gssis, client)
+        if self.mesh_enabled:
+            self._interest_dirty = True
 
     def deaffiliate(self, client: Client, issi: int, gssis: list):
         for gssi in gssis:
@@ -232,6 +273,8 @@ class BrewServer:
             if issi in client.affiliations:
                 client.affiliations[issi].discard(gssi)
         log.info("DEAFFILIATE ISSI=%d von GSSIs=%s auf %s", issi, gssis, client)
+        if self.mesh_enabled:
+            self._interest_dirty = True
 
     def cleanup_client(self, client: Client):
         for issi in list(client.issis):
@@ -335,6 +378,11 @@ class BrewServer:
             log.info("GROUP_TX call=%s ISSI=%d->GSSI=%d targets=%d von %s",
                      call_uuid.hex()[:8], src_issi, dest_gssi, len(targets), client)
             await self.forward(data, targets, call_uuid)
+            if self.mesh_enabled:                       # Mesh: an Owner/interessierte Peers
+                peers = self.trunk_targets(dest_gssi, src_peer=None)
+                for p in peers:
+                    await self.trunk_send(p, data)
+                self.active_call_peers[call_uuid] = peers
             # Echo-Test: Aufnahme starten
             if dest_gssi in self.echo_gssis:
                 self.echo_buffers[call_uuid] = []
@@ -345,6 +393,9 @@ class BrewServer:
             targets = {self.clients[s] for s in sessions if s in self.clients}
             log.info("GROUP_IDLE call=%s targets=%d von %s", call_uuid.hex()[:8], len(targets), client)
             await self.forward(data, targets)
+            if self.mesh_enabled:
+                for p in self.active_call_peers.pop(call_uuid, set()):
+                    await self.trunk_send(p, data)
             # Echo-Test: Aufnahme zurückspielen
             frames = self.echo_buffers.pop(call_uuid, None)
             caller = self.echo_callers.pop(call_uuid, None)
@@ -374,6 +425,9 @@ class BrewServer:
 
         if typ == FRAME_TRAFFIC:
             await self.forward(data, targets)
+            if self.mesh_enabled:                       # Mesh: Sprachframe an dieselben Peers
+                for p in self.active_call_peers.get(call_uuid, set()):
+                    await self.trunk_send(p, data)
             if call_uuid in self.echo_buffers:          # Echo-Test: Sprachframe merken
                 self.echo_buffers[call_uuid].append(data[18:])
         elif typ in (FRAME_SDS_TRANSFER, FRAME_SDS_REPORT):
@@ -464,6 +518,9 @@ class BrewServer:
 
     async def ws_handler(self, websocket):
         path = websocket.request.path
+        if path.rstrip("/") == "/trunk":            # Mesh: eingehender Server-Trunk
+            await self.handle_trunk_inbound(websocket)
+            return
         if not path.startswith("/brew/"):
             await websocket.close(4001, "Invalid path")
             return
@@ -490,6 +547,219 @@ class BrewServer:
             log.error("Unerwarteter Fehler von %s: %s", client, e)
         finally:
             self.cleanup_client(client)
+
+    # ------------------------------------------------------------------
+    # Mesh: mehrere FreeTetra-Server koppeln (Trunk + Prefix-Ownership).
+    # Alles hinter self.mesh_enabled -> ohne Peers exakt Standalone-Verhalten.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _tg_match(patterns, gssi) -> bool:
+        """None = alles erlaubt. Sonst Liste aus exakt ('8') oder Prefix ('262*')."""
+        if not patterns:
+            return True
+        s = str(gssi)
+        for pat in patterns:
+            pat = str(pat)
+            if pat.endswith("*"):
+                if s.startswith(pat[:-1]):
+                    return True
+            elif s == pat:
+                return True
+        return False
+
+    @staticmethod
+    def _prefix_match(prefix: str, gssi) -> bool:
+        return bool(prefix) and str(gssi).startswith(prefix)
+
+    def _mesh_wants(self, gssi) -> bool:
+        """Nimmt DIESER Server an dieser TG ueberhaupt teil (globaler Filter)?"""
+        return self._tg_match(self.mesh_tgs, gssi)
+
+    def owner_of(self, gssi):
+        """Longest-Prefix-Match: 'local' oder der Peer, dem die TG-Vorwahl gehoert."""
+        owner, best = "local", -1
+        if self._prefix_match(self.local_prefix, gssi):
+            owner, best = "local", len(self.local_prefix)
+        for p in self.peers.values():
+            if self._prefix_match(p.prefix, gssi) and len(p.prefix) > best:
+                owner, best = p, len(p.prefix)
+        return owner
+
+    def trunk_targets(self, gssi, src_peer):
+        """Peers, an die ein Ruf auf dieser GSSI geht (loop-sicher via Owner-Relay)."""
+        if not self.mesh_enabled or not self._mesh_wants(gssi):
+            return set()
+        owner = self.owner_of(gssi)
+        out = set()
+        if owner == "local":
+            # Ich bin Owner -> an ALLE interessierten Peers faechern (ausser Quelle).
+            for p in self.peers.values():
+                if p is src_peer or not p.connected():
+                    continue
+                if self._tg_match(p.tgs, gssi) and (gssi in p.interest or self._prefix_match(p.prefix, gssi)):
+                    out.add(p)
+        elif owner is not src_peer and owner.connected() and self._tg_match(owner.tgs, gssi):
+            # Owner ist ein Peer -> nur dorthin (Uplink).
+            out.add(owner)
+        return out
+
+    def _local_interest(self) -> set:
+        return {g for g, m in self.gssi_affiliations.items() if m and self._mesh_wants(g)}
+
+    async def trunk_send(self, peer, data: bytes):
+        if peer.ws is None:
+            return
+        try:
+            await peer.ws.send(data)
+        except Exception as e:
+            log.warning("Trunk-Send an %s fehlgeschlagen: %s", peer, e)
+
+    async def trunk_send_ctrl(self, peer, sub: int, obj: dict):
+        await self.trunk_send(peer, bytes([CLASS_TRUNK, sub]) + json.dumps(obj).encode())
+
+    def _hello_bytes(self, peer) -> bytes:
+        nonce = os.urandom(8).hex()
+        ts = int(time.time())
+        mac = hmac.new(peer.secret.encode(), f"{peer.name}:{nonce}:{ts}".encode(),
+                       hashlib.sha256).hexdigest()
+        obj = {"name": peer.name, "nonce": nonce, "ts": ts, "mac": mac, "prefix": self.local_prefix}
+        return bytes([CLASS_TRUNK, TRUNK_HELLO]) + json.dumps(obj).encode()
+
+    def _verify_hello(self, data: bytes):
+        """Gueltiges Hello -> zugehoeriger Peer, sonst None. Schuetzt vor Fremd-Meshing."""
+        if len(data) < 2 or data[0] != CLASS_TRUNK or data[1] != TRUNK_HELLO:
+            return None
+        try:
+            obj = json.loads(data[2:])
+        except Exception:
+            return None
+        peer = self.peers.get(str(obj.get("name", "")))
+        if peer is None:
+            return None
+        try:
+            if abs(int(time.time()) - int(obj.get("ts", 0))) > 120:
+                return None
+        except Exception:
+            return None
+        mac = hmac.new(peer.secret.encode(),
+                       f"{peer.name}:{obj.get('nonce','')}:{obj.get('ts','')}".encode(),
+                       hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(mac, str(obj.get("mac", ""))):
+            return None
+        if not peer.prefix and obj.get("prefix"):      # Vorwahl aus Hello, falls nicht konfiguriert
+            peer.prefix = str(obj["prefix"])
+        return peer
+
+    async def handle_trunk_message(self, peer, data: bytes):
+        if len(data) < 2:
+            return
+        if data[0] == CLASS_TRUNK:
+            if data[1] == TRUNK_INTEREST:
+                try:
+                    obj = json.loads(data[2:])
+                    peer.interest = {int(x) for x in obj.get("tgs", [])}
+                except Exception:
+                    pass
+            elif data[1] == TRUNK_HELLO:
+                try:
+                    obj = json.loads(data[2:])
+                    if not peer.prefix and obj.get("prefix"):
+                        peer.prefix = str(obj["prefix"])
+                except Exception:
+                    pass
+            return
+        await self.handle_trunk_brew(peer, data)      # BREW-Frame vom Peer -> routen
+
+    async def handle_trunk_brew(self, peer, data: bytes):
+        """Ruf/Frame von einem Peer: lokal zustellen + loop-sicher weiterreichen."""
+        cls, typ = data[0], data[1]
+        if cls == CLASS_CALL and typ == CALL_GROUP_TX and len(data) >= 28:
+            uuid = data[2:18]
+            gssi = struct.unpack_from("<I", data, 22)[0]
+            local = self.targets_for_gssi(gssi, exclude=None)
+            await self.forward(data, local, uuid)
+            peers = self.trunk_targets(gssi, src_peer=peer)
+            for p in peers:
+                await self.trunk_send(p, data)
+            self.active_call_peers[uuid] = peers
+        elif cls == CLASS_CALL and typ == CALL_GROUP_IDLE and len(data) >= 18:
+            uuid = data[2:18]
+            sessions = self.active_calls.pop(uuid, set())
+            await self.forward(data, {self.clients[s] for s in sessions if s in self.clients})
+            for p in self.active_call_peers.pop(uuid, set()):
+                if p is not peer:
+                    await self.trunk_send(p, data)
+        elif cls == CLASS_FRAME and len(data) >= 18:
+            uuid = data[2:18]
+            sessions = self.active_calls.get(uuid, set())
+            await self.forward(data, {self.clients[s] for s in sessions if s in self.clients})
+            for p in self.active_call_peers.get(uuid, set()):
+                if p is not peer:
+                    await self.trunk_send(p, data)
+
+    async def _trunk_run(self, peer, ws, inbound: bool):
+        """Attach + Empfangsschleife fuer eine authentifizierte Trunk-Verbindung."""
+        if peer.ws is not None:
+            log.info("Trunk %s bereits verbunden -> Duplikat verworfen", peer)
+            await ws.close()
+            return
+        peer.ws = ws
+        peer.connected_at = time.time()
+        log.info("Trunk %s VERBUNDEN (%s)", peer, "inbound" if inbound else "outbound")
+        try:
+            await self.trunk_send_ctrl(peer, TRUNK_INTEREST, {"tgs": sorted(self._local_interest())})
+            async for msg in ws:
+                if isinstance(msg, bytes):
+                    await self.handle_trunk_message(peer, msg)
+        except Exception as e:
+            log.info("Trunk %s Fehler: %s", peer, e)
+        finally:
+            if peer.ws is ws:
+                peer.ws = None
+                peer.interest = set()
+            log.info("Trunk %s getrennt", peer)
+
+    async def handle_trunk_inbound(self, ws):
+        """Eingehende Trunk-Verbindung: erst Hello verifizieren, dann laufen lassen."""
+        try:
+            first = await asyncio.wait_for(ws.recv(), timeout=10)
+        except Exception:
+            await ws.close()
+            return
+        peer = self._verify_hello(first if isinstance(first, bytes) else b"")
+        if peer is None:
+            log.warning("Trunk-Inbound abgewiesen (Hello ungueltig/unbekannt)")
+            await ws.close(4003, "auth")
+            return
+        await ws.send(self._hello_bytes(peer))       # zurueckgruessen
+        await self._trunk_run(peer, ws, inbound=True)
+
+    async def trunk_dial(self, peer):
+        """Ausgehende Trunk-Verbindung mit Reconnect-Backoff."""
+        backoff = 5
+        while True:
+            try:
+                async with websockets.connect(peer.url, subprotocols=["brew"],
+                                               ping_interval=30, ping_timeout=10) as ws:
+                    await ws.send(self._hello_bytes(peer))   # Secret nachweisen
+                    backoff = 5
+                    await self._trunk_run(peer, ws, inbound=False)
+            except Exception as e:
+                log.info("Trunk-Dial %s: %s", peer, e)
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)
+
+    async def mesh_loop(self):
+        """Bei geaenderten lokalen Affiliationen die Interest-Liste an Peers melden."""
+        while True:
+            await asyncio.sleep(3)
+            if not self._interest_dirty:
+                continue
+            self._interest_dirty = False
+            snap = {"tgs": sorted(self._local_interest())}
+            for p in self.peers.values():
+                if p.connected():
+                    await self.trunk_send_ctrl(p, TRUNK_INTEREST, snap)
 
     # ------------------------------------------------------------------
     # Live-Knotenverzeichnis: eigenen Zustand nach web/nodes.json exportieren
@@ -592,6 +862,12 @@ class BrewServer:
                                     ping_interval=30, ping_timeout=10):
             log.info("Server läuft.")
             asyncio.ensure_future(self.nodes_loop())   # Live-Verzeichnis nach web/nodes.json
+            if self.mesh_enabled:
+                log.info("Mesh aktiv: local_prefix=%r, %d Peer(s)", self.local_prefix, len(self.peers))
+                asyncio.ensure_future(self.mesh_loop())
+                for p in self.peers.values():
+                    if p.url:                          # nur Peers mit URL rauswaehlen (andere kommen rein)
+                        asyncio.ensure_future(self.trunk_dial(p))
             await asyncio.Future()  # für immer
 
 

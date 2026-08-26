@@ -9,5 +9,10 @@
   "web_dir":         "web",
   "node_meta":       {
     "262102": { "name": "DO0RAM", "type": "FM", "qth": "Ramelsloh" }
+  },
+  "mesh":            {
+    "local_prefix": "",
+    "tgs":          null,
+    "peers":        []
   }
 }
