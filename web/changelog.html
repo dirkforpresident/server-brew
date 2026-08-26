@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeTetra — Changelog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f4f1; --panel:#ffffff; --fg:#1b1c1f; --muted:#63666e; --faint:#9a9ba1;
+    --line:#e5e3dc; --accent:#b06a06; --accent-dim:#8a5305; --live:#1f9d57;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --maxw:50rem;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#0a0b0d; --panel:#14161d; --fg:#e9eaee; --muted:#8f939d; --faint:#5b606b;
+    --line:#242833; --accent:#f2a83c; --accent-dim:#c9862b; --live:#54e08a;
+  }}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;padding:2.2rem 1.2rem 4rem}
+  .wrap{max-width:var(--maxw);margin:0 auto}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1rem;margin-bottom:.3rem}
+  h1{font-size:1.55rem;font-weight:600;margin:0;letter-spacing:-.01em}
+  h1 .ft{color:var(--accent)}
+  .sub{color:var(--muted);font-size:.9rem}
+  .nav{display:flex;gap:1.1rem;margin:.8rem 0 2rem;font-family:var(--mono);font-size:.82rem}
+  .rel{margin:0 0 2.2rem}
+  .date{font-family:var(--mono);font-size:.8rem;color:var(--faint);letter-spacing:.05em}
+  .rel h2{font-size:1.05rem;font-weight:600;margin:.9rem 0 .3rem;display:flex;align-items:center;gap:.5rem}
+  .tag{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;
+    padding:.16rem .5rem;border-radius:6px;font-weight:500}
+  .tag.neu{background:color-mix(in srgb,var(--live) 18%,transparent);color:var(--live)}
+  .tag.plus{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-dim)}
+  :root:not([data-theme="light"]) .tag.plus{color:var(--accent)}
+  .tag.fix{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
+  ul{margin:.3rem 0 1rem;padding-left:1.2rem} li{margin:.35rem 0}
+  li b{color:var(--accent-dim)} :root:not([data-theme="light"]) li b{color:var(--accent)}
+  .fixes{color:var(--muted);font-size:.94rem}
+  footer{margin-top:1.5rem;color:var(--faint);font-size:.8rem;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="ft">FreeTetra</span> — Changelog</h1>
+    <span class="sub">was neu ist &amp; sich verbessert hat</span>
+  </header>
+  <div class="nav">
+    <a href="/">← FreeTetra</a>
+    <a href="/nodes.html">Aktive Knoten</a>
+    <a href="/anleitung.html">Anleitung</a>
+  </div>
+
+  <section class="rel">
+    <div class="date">26.08.2026</div>
+
+    <h2><span class="tag neu">Neu</span> Neue Funktionen</h2>
+    <ul>
+      <li><b>SDS-Steuerung von der TETRA-Seite</b> — Text-SDS mit TG-Nummer an die
+        Repeater-ISSI bucht die Brücke auf diese TG ein (<code>0</code>/<code>off</code> = trennen).
+        Der Repeater antwortet per SDS und quittiert eingehende Nachrichten (kein „message failed").
+        Bedienbar mit jedem TETRA-Funkgerät.</li>
+      <li><b>Persistent-Standby</b> — der Repeater bleibt dauerhaft im TETRA-Netz eingebucht
+        (ohne zu brücken): immer im Verzeichnis sichtbar und per SDS erreichbar, während er
+        normal für FM nutzbar bleibt.</li>
+      <li><b>Live-Knotenverzeichnis</b> — zeigt alle Knoten mit Status
+        <i>offline / Standby / aktiv + Talkgroup</i>; Rufzeichen werden automatisch aus der
+        RadioID-Datenbank aufgelöst.</li>
+      <li><b>Anleitungs-Seite</b> für beide Seiten (FM/DTMF und TETRA/SDS) — jeder Nutzer kann
+        die Brücke temporär selbst schalten.</li>
+    </ul>
+
+    <h2><span class="tag plus">Besser</span> Verbesserungen</h2>
+    <ul>
+      <li><b>Durchgangs-Zeitsperre in beide Richtungen</b> (je 3 Min) — kein hängender Sender
+        (FM oder TETRA) blockiert mehr die Brücke bzw. das Relais.</li>
+      <li><b>Auto-Rückfall auf die Heimat-TG</b> — steht die Brücke lange still auf einer fremden
+        TG, schaltet sie von allein zurück.</li>
+      <li>Sinnvolle <b>Default-Talkgroup</b> statt Brandmeister-Welt; <b>kürzeres Squelch-Nachlaufen</b>
+        am Repeater (weniger Rauschen nach dem Loslassen).</li>
+    </ul>
+
+    <h2><span class="tag fix">Fix</span> Fehlerbehebungen</h2>
+    <ul class="fixes">
+      <li>FM→TETRA-Richtung ging nicht — behoben.</li>
+      <li>„message failed" beim SDS-Senden — behoben.</li>
+      <li>Doppelte Einbuch-Ansage auf FM — behoben.</li>
+    </ul>
+  </section>
+
+  <footer>FreeTetra · Changelog · <a href="/anleitung.html">Anleitung</a></footer>
+</div>
+</body>
+</html>
