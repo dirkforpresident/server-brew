@@ -281,7 +281,8 @@ class BrewServer:
             log.error("Fehler bei 0x%02x/0x%02x von %s: %s", cls, typ, client, e)
 
     async def handle_subscriber(self, client: Client, typ: int, data: bytes):
-        # class(1) type(1) issi(4) timestamp(8) nanos(4) [count(2) gssi(4)...]
+        # class(1) type(1) issi(4) timestamp(8) nanos(4) gssi(4)...
+        # (Standard-BREW: GSSIs direkt ab Offset 18; ModuleTetraBrew mit count-Praefix.)
         if len(data) < 18:
             raise struct.error("subscriber msg zu kurz")
         issi = struct.unpack_from("<I", data, 2)[0]
@@ -299,7 +300,7 @@ class BrewServer:
             rest = data[18:]
             if len(rest) % 4 == 2:                 # count-Praefix (ModuleTetraBrew)
                 rest = rest[2:]
-            if len(rest) == 0 or len(rest) % 4 != 0:
+            if len(rest) % 4 != 0:                 # leere Liste = No-Op (nicht ablehnen)
                 raise struct.error("affiliate msg abgeschnitten")
             gssis = [struct.unpack_from("<I", rest, i * 4)[0]
                      for i in range(len(rest) // 4)]
