@@ -291,12 +291,18 @@ class BrewServer:
         elif typ == SUB_DEREGISTER:
             self.deregister_issi(client, issi)
         elif typ in (SUB_AFFILIATE, SUB_DEAFFILIATE):
-            if len(data) < 20:
-                raise struct.error("affiliate msg zu kurz")
-            count = struct.unpack_from("<H", data, 18)[0]
-            if len(data) < 20 + count * 4:
+            # GSSI-Liste ab Offset 18 bis Nachrichtenende (je 4 Byte, LE).
+            # BlueStations senden die GSSIs direkt (kein count-Feld); unser
+            # ModuleTetraBrew schiebt ein 2-Byte-count davor. Beide Varianten
+            # tolerant lesen -> sonst wird die BlueStation nie affiliiert und
+            # hoert FM->TETRA nicht (Server findet targets=0).
+            rest = data[18:]
+            if len(rest) % 4 == 2:                 # count-Praefix (ModuleTetraBrew)
+                rest = rest[2:]
+            if len(rest) == 0 or len(rest) % 4 != 0:
                 raise struct.error("affiliate msg abgeschnitten")
-            gssis = [struct.unpack_from("<I", data, 20 + i * 4)[0] for i in range(count)]
+            gssis = [struct.unpack_from("<I", rest, i * 4)[0]
+                     for i in range(len(rest) // 4)]
             if typ == SUB_AFFILIATE:
                 self.affiliate(client, issi, gssis)
             else:
