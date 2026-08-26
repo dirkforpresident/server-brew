@@ -5,5 +5,9 @@
   "users":           {},
   "blocklist":       [],
   "echo_gssis":      [9],
-  "broadcast_groups": false
+  "broadcast_groups": false,
+  "web_dir":         "web",
+  "node_meta":       {
+    "262102": { "name": "DO0RAM", "type": "FM", "qth": "Ramelsloh" }
+  }
 }

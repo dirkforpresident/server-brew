@@ -118,6 +118,7 @@ class Client:
     ws: object              # websockets-Verbindung
     issis: set = field(default_factory=set)        # registrierte ISSIs
     affiliations: dict = field(default_factory=dict)  # ISSI -> set(GSSIs)
+    connected_at: float = 0.0                      # time.time() beim Verbinden (Verzeichnis)
 
     def __repr__(self):
         return f"Client({self.callsign}/{self.client_id}, session={self.session_id[:8]})"
@@ -136,6 +137,7 @@ class BrewServer:
         self.issi_registry: dict[int, Client] = {}       # ISSI -> Client
         self.gssi_affiliations: dict[int, set] = {}      # GSSI -> set(ISSIs)
         self.active_calls: dict[bytes, set] = {}         # call_uuid -> set(session_ids)
+        self._last_nodes = None                          # letzter nodes.json-Inhalt (Dedup)
 
         # Open-Mode: jeder mit RadioID + Community-Passwort darf rein.
         self.open_mode: bool = config.get("open", False)
@@ -468,6 +470,7 @@ class BrewServer:
             await websocket.close(4002, "Session expired")
             return
         client = Client(user_id, callsign, session_id, websocket)
+        client.connected_at = time.time()
         self.clients[session_id] = client
         log.info("WebSocket verbunden: %s", client)
         try:
@@ -481,6 +484,45 @@ class BrewServer:
         finally:
             self.cleanup_client(client)
 
+    # ------------------------------------------------------------------
+    # Live-Knotenverzeichnis: eigenen Zustand nach web/nodes.json exportieren
+    # (read-only, nginx liefert es statisch aus -> Verzeichnis-Webseite).
+    # ------------------------------------------------------------------
+    def nodes_snapshot(self):
+        meta = self.config.get("node_meta", {})   # {"<radioid|call>": {name,type,qth}}
+        by_id = {}
+        for c in self.clients.values():
+            tgs = sorted({g for gs in c.affiliations.values() for g in gs})
+            m = meta.get(str(c.client_id)) or meta.get(c.callsign) or {}
+            entry = {"call": m.get("name") or c.callsign, "id": str(c.client_id),
+                     "tgs": tgs, "type": m.get("type", ""), "qth": m.get("qth", ""),
+                     "since": int(c.connected_at)}
+            prev = by_id.get(c.client_id)          # je Knoten die neueste Session
+            if prev is None or entry["since"] >= prev["since"]:
+                by_id[c.client_id] = entry
+        nodes = sorted(by_id.values(), key=lambda e: (e["type"], e["call"]))
+        return {"updated": int(time.time()), "count": len(nodes), "nodes": nodes}
+
+    def write_nodes(self):
+        try:
+            web_dir = self.config.get("web_dir", "web")
+            data = json.dumps(self.nodes_snapshot(), ensure_ascii=False, indent=1)
+            if data == self._last_nodes:
+                return
+            self._last_nodes = data
+            os.makedirs(web_dir, exist_ok=True)
+            tmp = os.path.join(web_dir, ".nodes.json.tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(data)
+            os.replace(tmp, os.path.join(web_dir, "nodes.json"))
+        except Exception as e:
+            log.error("write_nodes: %s", e)
+
+    async def nodes_loop(self):
+        while True:
+            self.write_nodes()
+            await asyncio.sleep(5)
+
     async def run(self):
         host = self.config["server"]["host"]
         port = self.config["server"]["port"]
@@ -491,6 +533,7 @@ class BrewServer:
                                     subprotocols=["brew"],
                                     ping_interval=30, ping_timeout=10):
             log.info("Server läuft.")
+            asyncio.ensure_future(self.nodes_loop())   # Live-Verzeichnis nach web/nodes.json
             await asyncio.Future()  # für immer
 
 
