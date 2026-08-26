@@ -576,8 +576,9 @@ class BrewServer:
         return self._tg_match(self.mesh_tgs, gssi)
 
     def owner_of(self, gssi):
-        """Longest-Prefix-Match: 'local' oder der Peer, dem die TG-Vorwahl gehoert."""
-        owner, best = "local", -1
+        """Longest-Prefix-Match: 'local', der Owner-Peer, oder None (keine Vorwahl
+        besitzt die TG -> bleibt lokal, wird NICHT gemesht; loop-sicher)."""
+        owner, best = None, -1
         if self._prefix_match(self.local_prefix, gssi):
             owner, best = "local", len(self.local_prefix)
         for p in self.peers.values():
@@ -590,6 +591,8 @@ class BrewServer:
         if not self.mesh_enabled or not self._mesh_wants(gssi):
             return set()
         owner = self.owner_of(gssi)
+        if owner is None:                 # keine Vorwahl besitzt die TG -> nicht meshen
+            return set()
         out = set()
         if owner == "local":
             # Ich bin Owner -> an ALLE interessierten Peers faechern (ausser Quelle).
