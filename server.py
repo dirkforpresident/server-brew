@@ -17,6 +17,7 @@ import logging
 import os
 import struct
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -138,6 +139,12 @@ class BrewServer:
         self.gssi_affiliations: dict[int, set] = {}      # GSSI -> set(ISSIs)
         self.active_calls: dict[bytes, set] = {}         # call_uuid -> set(session_ids)
         self._last_nodes = None                          # letzter nodes.json-Inhalt (Dedup)
+        self._idcache_path = config.get("radioid_cache", "radioid_cache.json")
+        try:
+            self._id_names = json.load(open(self._idcache_path))   # "<baseid>" -> callsign
+        except Exception:
+            self._id_names = {}
+        self._id_pending = set()                         # laufende/fehlgeschlagene Lookups
 
         # Open-Mode: jeder mit RadioID + Community-Passwort darf rein.
         self.open_mode: bool = config.get("open", False)
@@ -489,19 +496,70 @@ class BrewServer:
     # (read-only, nginx liefert es statisch aus -> Verzeichnis-Webseite).
     # ------------------------------------------------------------------
     def nodes_snapshot(self):
-        meta = self.config.get("node_meta", {})   # {"<radioid|call>": {name,type,qth}}
-        by_id = {}
+        # node_meta = bekannte Knoten (Roster): werden IMMER gelistet, auch offline.
+        meta = self.config.get("node_meta", {})    # {"<radioid>": {name,type,qth}}
+        # Live-Zustand je client_id (neueste Session gewinnt).
+        live = {}
         for c in self.clients.values():
-            tgs = sorted({g for gs in c.affiliations.values() for g in gs})
-            m = meta.get(str(c.client_id)) or meta.get(c.callsign) or {}
-            entry = {"call": m.get("name") or c.callsign, "id": str(c.client_id),
-                     "tgs": tgs, "type": m.get("type", ""), "qth": m.get("qth", ""),
-                     "since": int(c.connected_at)}
-            prev = by_id.get(c.client_id)          # je Knoten die neueste Session
-            if prev is None or entry["since"] >= prev["since"]:
-                by_id[c.client_id] = entry
-        nodes = sorted(by_id.values(), key=lambda e: (e["type"], e["call"]))
-        return {"updated": int(time.time()), "count": len(nodes), "nodes": nodes}
+            cid = str(c.client_id)
+            rec = {"tgs": sorted({g for gs in c.affiliations.values() for g in gs}),
+                   "since": int(c.connected_at), "auth": c.callsign}
+            if cid not in live or rec["since"] >= live[cid]["since"]:
+                live[cid] = rec
+        nodes = []
+        for cid in set(meta.keys()) | set(live.keys()):
+            m = meta.get(cid, {}); lv = live.get(cid)
+            online = lv is not None
+            tgs = lv["tgs"] if online else []
+            status = "offline" if not online else ("active" if tgs else "standby")
+            name = m.get("name") or self.resolve_name(cid) or (lv["auth"] if lv else cid)
+            nodes.append({"call": name, "id": cid, "type": m.get("type", ""),
+                          "qth": m.get("qth", ""), "online": online, "status": status,
+                          "tgs": tgs, "since": lv["since"] if online else 0})
+        nodes.sort(key=lambda e: (not e["online"], e["type"], e["call"]))
+        return {"updated": int(time.time()),
+                "count": sum(1 for n in nodes if n["online"]),
+                "total": len(nodes), "nodes": nodes}
+
+    @staticmethod
+    def _base_id(cid):
+        # RadioID + laufende SSID-Nummer -> Basis-ID (DMR = 7 Stellen).
+        s = "".join(ch for ch in str(cid) if ch.isdigit())
+        return s[:7] if len(s) > 7 else s
+
+    def resolve_name(self, cid):
+        # Callsign aus dem RadioID-Cache; unbekannte IDs im Hintergrund nachladen.
+        base = self._base_id(cid)
+        if base in self._id_names:
+            return self._id_names[base] or None
+        if base and base not in self._id_pending:
+            self._id_pending.add(base)
+            asyncio.ensure_future(self._radioid_fetch(base))
+        return None
+
+    async def _radioid_fetch(self, base):
+        # radioid.net: erst User-, dann Repeater-Endpoint. Blockierendes urllib im
+        # Executor -> Event-Loop bleibt frei. Ergebnis (auch leer) wird gecacht.
+        def _q(kind):
+            url = f"https://radioid.net/api/dmr/{kind}/?id={base}"
+            try:
+                with urllib.request.urlopen(url, timeout=8) as r:
+                    res = json.loads(r.read().decode()).get("results") or []
+                    return (res[0].get("callsign") or "").strip() if res else ""
+            except Exception:
+                return None
+        loop = asyncio.get_event_loop()
+        call = await loop.run_in_executor(None, _q, "user")
+        if not call:
+            call = await loop.run_in_executor(None, _q, "repeater")
+        self._id_names[base] = call or ""      # "" = nachgeschlagen, nichts gefunden
+        try:
+            json.dump(self._id_names, open(self._idcache_path, "w"), ensure_ascii=False, indent=1)
+        except Exception as e:
+            log.error("radioid cache: %s", e)
+        if call:
+            log.info("RadioID %s -> %s", base, call)
+        self._last_nodes = None                # Snapshot neu schreiben (Name kam dazu)
 
     def write_nodes(self):
         try:

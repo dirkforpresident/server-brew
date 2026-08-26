@@ -52,6 +52,12 @@
   .tg{font-family:var(--mono);font-size:.8rem;padding:.12rem .5rem;border-radius:6px;
     background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-dim);font-weight:500}
   :root:not([data-theme="light"]) .tg{color:var(--accent)}
+  .st{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.84rem;color:var(--muted)}
+  .sd{width:.6rem;height:.6rem;border-radius:50%;flex:none}
+  .sd.active{background:var(--live)}
+  .sd.standby{background:var(--accent)}
+  .sd.offline{background:var(--faint)}
+  tr.off{opacity:.5}
   .standby{color:var(--faint);font-family:var(--mono);font-size:.82rem}
   .badge{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
     padding:.18rem .5rem;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
@@ -70,7 +76,7 @@
   </header>
 
   <div class="bar">
-    <span class="count"><span class="dot"></span><b id="count">–</b> verbunden</span>
+    <span class="count"><span class="dot"></span><b id="count">–</b> online</span>
     <span id="updated"></span>
     <a href="/" style="margin-left:auto">← FreeTetra</a>
   </div>
@@ -78,7 +84,7 @@
   <div class="panel">
     <div class="scroll">
       <table>
-        <thead><tr><th>Rufzeichen</th><th>Typ</th><th>Talkgroups</th><th>QTH</th><th>seit</th></tr></thead>
+        <thead><tr><th>Rufzeichen</th><th>Typ</th><th>Status</th><th>QTH</th><th>seit</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -101,20 +107,29 @@ function ago(sec){
   return Math.floor(h/24)+" d "+(h%24)+" h";
 }
 
+function statusCell(n){
+  if(n.status === "active"){
+    const tgs = `<div class="tags">${n.tgs.map(t => `<span class="tg">TG ${t}</span>`).join("")}</div>`;
+    return `<div class="st"><span class="sd active"></span>${tgs}</div>`;
+  }
+  if(n.status === "standby")
+    return `<div class="st"><span class="sd standby"></span>online · Standby</div>`;
+  return `<div class="st"><span class="sd offline"></span>offline</div>`;
+}
+
 function render(d){
   const nodes = (d && d.nodes) || [];
-  $('count').textContent = nodes.length;
+  const online = (d && d.count != null) ? d.count : nodes.filter(n=>n.online).length;
+  const total  = (d && d.total != null) ? d.total : nodes.length;
+  $('count').textContent = online + " / " + total;
   $('rows').innerHTML = nodes.map(n => {
-    const tgs = (n.tgs && n.tgs.length)
-      ? `<div class="tags">${n.tgs.map(t => `<span class="tg">TG ${t}</span>`).join("")}</div>`
-      : `<span class="standby">Standby</span>`;
     const typ = n.type ? `<span class="badge ${esc(n.type)}">${esc(n.type)}</span>` : "";
-    return `<tr>
+    return `<tr class="${n.online ? "" : "off"}">
       <td><span class="call">${esc(n.call)}</span><br><span class="id">${esc(n.id)}</span></td>
       <td>${typ}</td>
-      <td>${tgs}</td>
+      <td>${statusCell(n)}</td>
       <td class="num">${n.qth ? esc(n.qth) : "–"}</td>
-      <td class="num">${ago(n.since)}</td>
+      <td class="num">${n.online ? ago(n.since) : "–"}</td>
     </tr>`;
   }).join("");
   $('empty').hidden = nodes.length > 0;
