@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeTetra — Anleitung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f4f1; --panel:#ffffff; --fg:#1b1c1f; --muted:#63666e; --faint:#9a9ba1;
+    --line:#e5e3dc; --accent:#b06a06; --accent-dim:#8a5305; --live:#1f9d57;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --maxw:52rem;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#0a0b0d; --panel:#14161d; --fg:#e9eaee; --muted:#8f939d; --faint:#5b606b;
+    --line:#242833; --accent:#f2a83c; --accent-dim:#c9862b; --live:#54e08a;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;padding:2.2rem 1.2rem 4rem}
+  .wrap{max-width:var(--maxw);margin:0 auto}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1rem;margin-bottom:.3rem}
+  h1{font-size:1.55rem;font-weight:600;margin:0;letter-spacing:-.01em}
+  h1 .ft{color:var(--accent)}
+  .sub{color:var(--muted);font-size:.9rem}
+  .nav{display:flex;gap:1.1rem;margin:.8rem 0 1.8rem;font-family:var(--mono);font-size:.82rem}
+  h2{font-size:1.15rem;font-weight:600;margin:2rem 0 .3rem;letter-spacing:-.01em}
+  h2 .ic{color:var(--accent)}
+  p{margin:.5rem 0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;margin:.9rem 0}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:26rem}
+  th,td{text-align:left;padding:.62rem .9rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);font-weight:500}
+  tbody tr:last-child td{border-bottom:none}
+  code,.k{font-family:var(--mono);font-size:.86rem;background:color-mix(in srgb,var(--accent) 13%,transparent);
+    color:var(--accent-dim);padding:.1rem .42rem;border-radius:6px;white-space:nowrap}
+  :root:not([data-theme="light"]) code,:root:not([data-theme="light"]) .k{color:var(--accent)}
+  .note{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);
+    padding:.6rem .9rem;border-radius:0 8px 8px 0;margin:.9rem 0;font-size:.92rem}
+  .cl{font-size:.94rem}
+  .cl b{color:var(--accent-dim)} :root:not([data-theme="light"]) .cl b{color:var(--accent)}
+  .cl ul{margin:.3rem 0 1rem;padding-left:1.1rem} .cl li{margin:.25rem 0}
+  footer{margin-top:2.2rem;color:var(--faint);font-size:.8rem;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="ft">FreeTetra</span> — Anleitung</h1>
+    <span class="sub">FM ↔ TETRA-Brücke bedienen</span>
+  </header>
+  <div class="nav">
+    <a href="/">← FreeTetra</a>
+    <a href="/nodes.html">Aktive Knoten</a>
+  </div>
+
+  <p>Ein FM-Repeater hängt als eigener TETRA-Teilnehmer (ISSI) am FreeTetra-Netz.
+  Die Brücke lässt sich <b>von beiden Seiten</b> steuern — per DTMF vom Repeater
+  und per SDS vom TETRA-Funkgerät. Wer gerade online ist, steht unter
+  <a href="/nodes.html">Aktive Knoten</a>.</p>
+
+  <div class="note"><b>Für alle Relais-Nutzer:</b> Du brauchst keine Sonderrechte.
+  Jeder auf dem FM-Repeater kann die Brücke <b>spontan &amp; temporär</b> zu einer TETRA-Talkgroup
+  aufmachen (per DTMF) — und jeder im TETRA-Netz kann den FM-Repeater temporär dazuholen (per SDS).
+  <b>Bitte fair:</b> wieder <b>trennen, wenn du fertig bist</b> (<code>#</code> bzw. SDS <code>0</code>),
+  damit der Repeater für andere frei ist. Schau vorher unter
+  <a href="/nodes.html">Aktive Knoten</a>, wer gerade wo ist.</div>
+
+  <h2><span class="ic">▸</span> Von der FM-Seite (DTMF)</h2>
+  <p>Das Modul hört auf die DTMF-Kennung <code>5</code>.</p>
+  <div class="panel"><div class="scroll"><table>
+    <thead><tr><th>Aktion</th><th>DTMF</th><th>Wirkung</th></tr></thead>
+    <tbody>
+      <tr><td>Brücke aktivieren (Heimat-TG)</td><td><code>5#</code></td><td>Bucht auf die Default-TG ein</td></tr>
+      <tr><td>Aktivieren auf TG X</td><td><code>5&lt;X&gt;#</code></td><td>z.B. <code>51#</code> → aktiv auf TG 1</td></tr>
+      <tr><td>Talkgroup wechseln (wenn aktiv)</td><td><code>&lt;X&gt;#</code></td><td>z.B. <code>8#</code> → TG 8</td></tr>
+      <tr><td>Brücke trennen</td><td><code>#</code></td><td>Zurück in Standby</td></tr>
+    </tbody>
+  </table></div></div>
+  <div class="note">⚠️ Die Modul-ID ist <code>5</code> — und <code>TG 5</code> ist auch gültig.
+  Ist die Brücke schon an und du tippst nochmal <code>5#</code>, heißt das „geh auf TG 5".
+  Also einmal <code>5#</code> zum Einschalten, danach die TG <b>ohne</b> die 5 wählen.</div>
+
+  <h2><span class="ic">▸</span> Von der TETRA-Seite (SDS)</h2>
+  <p>Text-SDS an die <b>Repeater-ISSI</b> (z.B. <code>262102</code>) schicken:</p>
+  <div class="panel"><div class="scroll"><table>
+    <thead><tr><th>SDS-Inhalt</th><th>Wirkung</th></tr></thead>
+    <tbody>
+      <tr><td><code>1</code>, <code>262</code>, …</td><td>Repeater bucht sich auf diese TG ein</td></tr>
+      <tr><td><code>0</code> oder <code>off</code></td><td>Repeater trennt → Standby</td></tr>
+    </tbody>
+  </table></div></div>
+  <p>Der Repeater antwortet per SDS: <b>„DO0RAM: TG 1 aktiv"</b> bzw. <b>„getrennt"</b>,
+  und quittiert deine SDS (kein „message failed").</p>
+  <div class="note">Du musst selbst auf der TG sein, die du dem Repeater nennst —
+  dann treffen sich beide dort und ihr redet.</div>
+
+  <h2><span class="ic">▸</span> Gut zu wissen</h2>
+  <p><b>Standby:</b> Der Repeater bleibt dauerhaft eingebucht (ohne zu brücken) —
+  immer im Verzeichnis sichtbar und per SDS erreichbar, FM läuft normal weiter.
+  Ein laufendes FM-QSO hat Vorrang, TETRA-Audio füllt nur die Pausen.
+  Jeder Durchgang ist auf 3 Minuten begrenzt (kein hängender Sender blockiert die Brücke),
+  und nach längerer Ruhe fällt die Brücke automatisch auf die Heimat-TG zurück.</p>
+
+  <h2><span class="ic">▸</span> Zuletzt neu (26.08.2026)</h2>
+  <div class="cl">
+    <b>Neue Funktionen</b>
+    <ul>
+      <li>SDS-Steuerung von der TETRA-Seite (einbuchen + Antwort-SDS + Quittung)</li>
+      <li>Persistent-Standby — Repeater dauerhaft im Netz + im Verzeichnis</li>
+      <li>Live-Knotenverzeichnis mit Status und automatischen Rufzeichen (RadioID)</li>
+    </ul>
+    <b>Verbesserungen</b>
+    <ul>
+      <li>Zeitsperre pro Durchgang in beide Richtungen (3 Min)</li>
+      <li>Auto-Rückfall auf die Heimat-TG nach längerer Ruhe</li>
+    </ul>
+    <b>Fehlerbehebungen</b>
+    <ul>
+      <li>FM→TETRA-Richtung, „message failed" bei SDS, doppelte Ansage — behoben</li>
+    </ul>
+  </div>
+
+  <footer>FreeTetra · Anleitung · <a href="/nodes.html">Aktive Knoten</a></footer>
+</div>
+</body>
+</html>
