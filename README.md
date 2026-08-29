@@ -35,12 +35,13 @@ Der Kern ist ein **Gruppenruf- und SDS-Router mit Presence**, kein vollständige
 - **Gruppenruf** (GROUP_TX → GROUP_IDLE), ACELP-Sprache an alle affiliierten Teilnehmer
 - **SDS**: Gruppen-SDS und Einzel-ISSI (SHORT_TRANSFER), Transfer + Report — unverändert weitergereicht
 - **Presence-Query** (SERVICE): ist ISSI registriert? welches Callsign? welche GSSIs?
-- Auth: feste User-Liste, Open-Mode (RadioID + Passwort), Blocklist
+- Auth: feste User-Liste, Open-Mode (RadioID/Rufzeichen + Passwort), Blocklist
 - Echo-/Papagei-Test, Broadcast-Modus (Ein-Stationen-Test: alle hören alles)
 - **Mesh**: mehrere Server koppeln — Talkgroups über Servergrenzen, Prefix-Ownership,
   loop-sicher, nur mit gemeinsamem Secret ([MESH.md](MESH.md))
-- **Live-Verzeichnis** der verbundenen Knoten (`nodes.json`/-Webseite), Rufzeichen
-  automatisch aus der RadioID-Datenbank
+- **Live-Verzeichnis** der verbundenen Knoten (`nodes.json`/-Webseite) mit Status, **ISSI**
+  und Talkgroup. Rufzeichen kommt aus dem Login-Namen (FM-Repeater) bzw. wird automatisch aus
+  der RadioID-Datenbank aufgelöst (TETRA-Stationen)
 
 **Kann nicht (teils bewusst weggelassen):**
 
@@ -94,13 +95,13 @@ location /       { try_files $uri $uri/ =404; }
 ```json
 {
   "server":          { "host": "127.0.0.1", "port": 8443 },
-  "open":            true,            // jeder mit RadioID + open_password darf rein
+  "open":            true,            // jeder mit RadioID/Rufzeichen + open_password darf rein
   "open_password":   "freetetra",
-  "users":           {},             // optional feste User: "<RadioID>": {"password":"…","callsign":"<CALL>"}
-  "blocklist":       [],             // gesperrte RadioIDs/ISSIs (rausschmeißen)
+  "users":           {},             // optional feste User: "<Login>": {"password":"…","callsign":"<CALL>"}
+  "blocklist":       [],             // gesperrte Logins/ISSIs (rausschmeißen)
   "echo_gssis":      [9],            // Talkgroups mit Echo-Test
   "broadcast_groups": false,         // nur Ein-Stationen-Test: true = alle hören alles
-  "node_meta":       {},             // optional Klartext fürs Verzeichnis: "<RadioID>": {"name":"…","type":"FM","qth":"…"}
+  "node_meta":       {},             // Klartext fürs Verzeichnis, Key = Login-Name: "<RadioID|CALL>": {"name":"…","type":"FM","qth":"…"}
   "mesh":            {}              // leer = Standalone. Mesh-Beispiel siehe MESH.md
 }
 ```
