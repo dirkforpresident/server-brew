@@ -2,8 +2,9 @@
 
 Ein kleiner, offener **BREW-Server**, der TETRA-Stationen (BlueStations, Eigenbau-TMO-Repeater) und —
 über [**ModuleTetraBrew**](https://github.com/do1xx/svxlink-module-tetrabrew) — auch
-**SvxLink-FM-Repeater** zu einem gemeinsamen Sprach-Netz verbindet. Reines `python3` (asyncio +
-websockets), ~500 Zeilen, keine Datenbank.
+**SvxLink-FM-Repeater** zu einem gemeinsamen Sprach-Netz verbindet. Mehrere Server lassen sich
+dezentral **koppeln** (Mesh, siehe [MESH.md](MESH.md)). Reines `python3` (asyncio + websockets),
+eine Datei, keine Datenbank.
 
 ## Mitmachen oder selbst hosten
 
@@ -34,6 +35,10 @@ Der Kern ist ein **Gruppenruf- und SDS-Router mit Presence**, kein vollständige
 - **Presence-Query** (SERVICE): ist ISSI registriert? welches Callsign? welche GSSIs?
 - Auth: feste User-Liste, Open-Mode (RadioID + Passwort), Blocklist
 - Echo-/Papagei-Test, Broadcast-Modus (Ein-Stationen-Test: alle hören alles)
+- **Mesh**: mehrere Server koppeln — Talkgroups über Servergrenzen, Prefix-Ownership,
+  loop-sicher, nur mit gemeinsamem Secret ([MESH.md](MESH.md))
+- **Live-Verzeichnis** der verbundenen Knoten (`nodes.json`/-Webseite), Rufzeichen
+  automatisch aus der RadioID-Datenbank
 
 **Kann nicht (teils bewusst weggelassen):**
 
@@ -41,6 +46,7 @@ Der Kern ist ein **Gruppenruf- und SDS-Router mit Presence**, kein vollständige
 - **Kein Late-Entry** — die Zielmenge wird bei GROUP_TX fixiert; wer danach affiliiert, hört den laufenden Ruf nicht mehr.
 - **Keine Priorität / Notruf / Preemption**
 - **Kein SDS Store-and-Forward** — Ziel-ISSI offline → Nachricht wird verworfen (keine spätere Zustellung)
+- **SDS läuft (noch) nicht über das Mesh** — Text/SDS bleibt lokal am Server; Sprache + Talkgroups meshen
 - **Keine Persistenz** — keine Datenbank, kein QSO-/Nachrichten-Log (nur Laufzeit-Logs)
 - **Kein Transcoding** — ACELP wird 1:1 durchgereicht; FM↔TETRA-Wandlung macht das Modul, nicht der Server
 - **Kein echtes SwMI/ISI** — keine TETRA-Call-Control-Signalisierung, keine Mobility, kein Interworking zu echten TETRA-Netzen
@@ -68,14 +74,17 @@ Der Server lauscht auf `127.0.0.1:8443`. Davor der Reverse-Proxy für `wss://<de
 map $http_upgrade $connection_upgrade { default upgrade; '' close; }
 
 # im server { } (mit TLS-Cert):
-location /brew/ {
-    proxy_pass http://127.0.0.1:8443;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
-    proxy_set_header Host $host;
-    proxy_read_timeout 86400;
-}
+root /opt/brew/web;                 # Landingpage + Verzeichnis (nodes.html)
+
+location /brew/  { proxy_pass http://127.0.0.1:8443; proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host; proxy_read_timeout 86400; }
+
+location /trunk  { proxy_pass http://127.0.0.1:8443; proxy_http_version 1.1;   # Mesh: Server-Trunk
+    proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host; proxy_read_timeout 86400; }
+
+location /       { try_files $uri $uri/ =404; }
 ```
 
 ## Konfiguration (`config.json`)
@@ -88,11 +97,13 @@ location /brew/ {
   "users":           {},             // optional feste User: "<RadioID>": {"password":"…","callsign":"<CALL>"}
   "blocklist":       [],             // gesperrte RadioIDs/ISSIs (rausschmeißen)
   "echo_gssis":      [9],            // Talkgroups mit Echo-Test
-  "broadcast_groups": false          // nur Ein-Stationen-Test: true = alle hören alles
+  "broadcast_groups": false,         // nur Ein-Stationen-Test: true = alle hören alles
+  "node_meta":       {},             // optional Klartext fürs Verzeichnis: "<RadioID>": {"name":"…","type":"FM","qth":"…"}
+  "mesh":            {}              // leer = Standalone. Mesh-Beispiel siehe MESH.md
 }
 ```
 
-`config.json` enthält Passwörter → **nicht committen** (ist in `.gitignore`).
+`config.json` enthält Passwörter/Secrets → **nicht committen** (ist in `.gitignore`).
 
 ## FM-Repeater anbinden
 
