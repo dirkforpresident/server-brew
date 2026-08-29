@@ -48,6 +48,7 @@
   tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
   .call{font-family:var(--mono);font-weight:500;font-size:1rem}
   .id{color:var(--faint);font-family:var(--mono);font-size:.78rem}
+  .issi{font-family:var(--mono);font-size:.95rem;letter-spacing:.02em}
   .tags{display:flex;flex-wrap:wrap;gap:.35rem}
   .tg{font-family:var(--mono);font-size:.8rem;padding:.12rem .5rem;border-radius:6px;
     background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-dim);font-weight:500}
@@ -86,7 +87,7 @@
   <div class="panel">
     <div class="scroll">
       <table>
-        <thead><tr><th>Rufzeichen</th><th>Typ</th><th>Status</th><th>QTH</th><th>seit</th></tr></thead>
+        <thead><tr><th>Rufzeichen</th><th>ISSI</th><th>Typ</th><th>Status</th><th>QTH</th><th>seit</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -128,6 +129,7 @@ function render(d){
     const typ = n.type ? `<span class="badge ${esc(n.type)}">${esc(n.type)}</span>` : "";
     return `<tr class="${n.online ? "" : "off"}">
       <td><span class="call">${esc(n.call)}</span><br><span class="id">${esc(n.id)}</span></td>
+      <td><span class="issi">${n.issi ? n.issi : "–"}</span></td>
       <td>${typ}</td>
       <td>${statusCell(n)}</td>
       <td class="num">${n.qth ? esc(n.qth) : "–"}</td>

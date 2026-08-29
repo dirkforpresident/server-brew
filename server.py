@@ -236,7 +236,11 @@ class BrewServer:
     def register_issi(self, client: Client, issi: int):
         old = self.issi_registry.get(issi)
         if old and old is not client:
-            log.warning("ISSI %d wandert von %s zu %s", issi, old, client)
+            if old.callsign != client.callsign:
+                log.warning("ISSI-KOLLISION %d: '%s' und '%s' beanspruchen dieselbe ISSI "
+                            "— einer muss SRC_ISSI manuell setzen", issi, old.callsign, client.callsign)
+            else:
+                log.info("ISSI %d wandert von %s zu %s (Reconnect)", issi, old, client)
             old.issis.discard(issi)
         self.issi_registry[issi] = client
         client.issis.add(issi)
@@ -775,8 +779,12 @@ class BrewServer:
         live = {}
         for c in self.clients.values():
             cid = str(c.client_id)
+            issis = sorted(c.issis)
             rec = {"tgs": sorted({g for gs in c.affiliations.values() for g in gs}),
-                   "since": int(c.connected_at), "auth": c.callsign}
+                   "since": int(c.connected_at), "auth": c.callsign,
+                   # genau eine ISSI (FM-Repeater) -> Waehl-Nummer zeigen;
+                   # mehrere (BlueStation/Gateway) -> keine einzelne ISSI
+                   "issi": issis[0] if len(issis) == 1 else 0}
             if cid not in live or rec["since"] >= live[cid]["since"]:
                 live[cid] = rec
         nodes = []
@@ -788,6 +796,7 @@ class BrewServer:
             name = m.get("name") or self.resolve_name(cid) or (lv["auth"] if lv else cid)
             nodes.append({"call": name, "id": cid, "type": m.get("type", ""),
                           "qth": m.get("qth", ""), "online": online, "status": status,
+                          "issi": lv["issi"] if online else 0,
                           "tgs": tgs, "since": lv["since"] if online else 0})
         nodes.sort(key=lambda e: (not e["online"], e["type"], e["call"]))
         return {"updated": int(time.time()),
@@ -802,6 +811,9 @@ class BrewServer:
 
     def resolve_name(self, cid):
         # Callsign aus dem RadioID-Cache; unbekannte IDs im Hintergrund nachladen.
+        # Nicht-numerischer Login = ist bereits ein Rufzeichen (CALL=) -> kein radioid.net.
+        if not str(cid).isdigit():
+            return None
         base = self._base_id(cid)
         if base in self._id_names:
             return self._id_names[base] or None

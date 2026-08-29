@@ -9,7 +9,8 @@ eine Datei, keine Datenbank.
 ## Mitmachen oder selbst hosten
 
 - **Einfach testen / mitmachen:** verbinde dich mit dem öffentlichen Server
-  **`wss://freetetra.de/brew/`** — Username = deine **RadioID**, Passwort `freetetra`.
+  **`wss://freetetra.de/brew/`** — Username = deine **RadioID** (TETRA-Stationen) bzw. dein
+  **Rufzeichen** (FM-Repeater über das Modul), Passwort `freetetra`.
 - **Eigenen Node hosten:** dieses Repo. Jede Region/Gruppe kann ihren **eigenen** FreeTetra-Server
   fahren — so entstehen viele kleine Netze statt eines zentralen.
 
@@ -18,7 +19,8 @@ eine Datei, keine Datenbank.
 - Clients (BlueStations, Gateways, das FM-Modul) verbinden per **WebSocket** + **HTTP-Digest-Auth**.
 - Routing per **Talkgroup (GSSI)**: wer auf eine GSSI affiliiert, hört deren Gruppenruf. Sprache läuft
   als **ACELP**-Frames durch — TETRA-Qualität, kein Transcoding.
-- **Open-Mode**: jeder mit RadioID + Community-Passwort darf rein (die RadioID *ist* die Identität).
+- **Open-Mode**: jeder mit gültigem Login + Community-Passwort darf rein. Der Login-Name *ist* die
+  Identität — eine **RadioID** (TETRA-Stationen) oder ein **Rufzeichen** (FM-Repeater über das Modul).
   Alternativ eine feste User-Liste. Eine **Sperrliste** wirft einzelne wieder raus.
 - **Echo-Test**: ein Ruf auf eine `echo_gssis`-Talkgroup wird aufgenommen und zurückgespielt (Audio-Check).
 
@@ -109,6 +111,13 @@ location /       { try_files $uri $uri/ =404; }
 
 FM-Relais kommen über das Modul rein → siehe
 [**svxlink-module-tetrabrew**](https://github.com/do1xx/svxlink-module-tetrabrew).
+
+Ein FM-Repeater hat von sich aus keine ISSI. Das Modul macht ihn zu **einem virtuellen
+TETRA-Teilnehmer** mit einer festen ISSI, die aus dem **Rufzeichen** abgeleitet wird
+([`tools/call2issi.py`](tools/call2issi.py) — deutsche Repeater-Calls kollisionsfrei, sonst
+Hash-Fallback, immer im diallbaren FM-Block `10.000.000–16.777.215`). Diese ISSI steht im
+Verzeichnis, damit die TETRA-Seite den Repeater per SDS/Einzelruf erreichen kann. Die Logik ist
+identisch im Modul (C++) hinterlegt — beide müssen dieselbe Zahl liefern.
 
 ---
 
