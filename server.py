@@ -15,6 +15,7 @@ import hmac
 import json
 import logging
 import os
+import signal
 import struct
 import time
 import urllib.request
@@ -891,6 +892,13 @@ class BrewServer:
         port = self.config["server"]["port"]
         log.info("Starte FreeTetra-Brew-Server auf %s:%d (open=%s, %d User, Echo-GSSIs=%s)",
                  host, port, self.open_mode, len(self.users), self.echo_gssis or "-")
+        stop = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                loop.add_signal_handler(sig, stop.set)
+            except NotImplementedError:
+                pass                                   # z.B. Windows -> kein sauberer Shutdown
         async with websockets.serve(self.ws_handler, host, port,
                                     process_request=self.process_request,
                                     subprotocols=["brew"],
@@ -903,7 +911,13 @@ class BrewServer:
                 for p in self.peers.values():
                     if p.url:                          # nur Peers mit URL rauswaehlen (andere kommen rein)
                         asyncio.ensure_future(self.trunk_dial(p))
-            await asyncio.Future()  # für immer
+            await stop.wait()                          # bis SIGTERM/SIGINT (systemctl restart/stop)
+            # Sauberer Shutdown: allen Clients ein WS-Close (1001) schicken, damit ihr
+            # Reconnect greift und sie nicht halb-offen haengen bleiben.
+            cons = [c.ws for c in list(self.clients.values())]
+            log.info("Shutdown: schliesse %d Client-Verbindung(en) sauber ...", len(cons))
+            await asyncio.gather(*[c.close(1001, "Server-Neustart") for c in cons],
+                                 return_exceptions=True)
 
 
 def main():
