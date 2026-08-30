@@ -161,6 +161,7 @@ class BrewServer:
         self.gssi_affiliations: dict[int, set] = {}      # GSSI -> set(ISSIs)
         self.active_calls: dict[bytes, set] = {}         # call_uuid -> set(session_ids)
         self._last_nodes = None                          # letzter nodes.json-Inhalt (Dedup)
+        self._meta_mtime = None                          # mtime der config.json (node_meta live-reload)
         self._idcache_path = config.get("radioid_cache", "radioid_cache.json")
         try:
             self._id_names = json.load(open(self._idcache_path))   # "<baseid>" -> callsign
@@ -861,8 +862,27 @@ class BrewServer:
         except Exception as e:
             log.error("write_nodes: %s", e)
 
+    def reload_node_meta(self):
+        # node_meta (Verzeichnis-Roster: name/type/qth) live aus der config.json
+        # nachladen, wenn sie sich geaendert hat — kosmetische Aenderungen (Badges,
+        # QTH) brauchen dann KEINEN Server-Neustart (der Clients trennen wuerde).
+        try:
+            mtime = os.path.getmtime(CONFIG_PATH)
+            if mtime == self._meta_mtime:
+                return
+            self._meta_mtime = mtime
+            with open(CONFIG_PATH) as f:
+                meta = json.load(f).get("node_meta", {})
+            if meta != self.config.get("node_meta"):
+                self.config["node_meta"] = meta
+                self._last_nodes = None            # Snapshot neu schreiben
+                log.info("node_meta neu geladen (%d Eintraege)", len(meta))
+        except Exception as e:
+            log.error("reload_node_meta: %s", e)
+
     async def nodes_loop(self):
         while True:
+            self.reload_node_meta()
             self.write_nodes()
             await asyncio.sleep(5)
 
