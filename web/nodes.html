@@ -55,9 +55,18 @@
   :root:not([data-theme="light"]) .tg{color:var(--accent)}
   .st{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.84rem;color:var(--muted)}
   .sd{width:.6rem;height:.6rem;border-radius:50%;flex:none}
-  .sd.active{background:var(--live)}
-  .sd.standby{background:var(--accent)}
+  .sd.ok{background:var(--live)}
+  .sd.live{background:var(--live);animation:pulse 1.5s ease-out infinite}
   .sd.offline{background:var(--faint)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 65%,transparent)}
+    70%{box-shadow:0 0 0 .45rem transparent}100%{box-shadow:0 0 0 0 transparent}}
+  @media (prefers-reduced-motion:reduce){.sd.live{animation:none}}
+  .brk{color:var(--accent);font-weight:600}
+  :root:not([data-theme="light"]) .brk{color:var(--accent)}
+  .mut{color:var(--faint)}
+  .legend{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;margin:.2rem 0 1rem;font-size:.78rem;
+    color:var(--faint);font-family:var(--mono)}
+  .legend b{color:var(--muted);font-weight:500}
   tr.off{opacity:.5}
   .standby{color:var(--faint);font-family:var(--mono);font-size:.82rem}
   .badge{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
@@ -88,10 +97,17 @@
     <a href="/">← FreeTetra</a>
   </div>
 
+  <div class="legend">
+    <span><span class="sd ok" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span><b>Verfügbar</b> — FM-Relais online, bereit (keine Brücke)</span>
+    <span><span class="sd live" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span><b>Brücke aktiv</b> — FM auf einer TETRA-TG</span>
+    <span><span class="sd ok" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span><b>Online</b> — TMO/DMO-Zelle erreichbar (ggf. auf TG)</span>
+    <span><span class="sd offline" style="display:inline-block;vertical-align:middle;margin-right:.35rem"></span>offline</span>
+  </div>
+
   <div class="panel">
     <div class="scroll">
       <table>
-        <thead><tr><th>Rufzeichen</th><th>ISSI</th><th>Typ</th><th>Status</th><th>QTH</th><th>seit</th></tr></thead>
+        <thead><tr><th>Rufzeichen</th><th>ISSI</th><th>Typ</th><th>Status / Brücke</th><th>QTH</th><th>seit</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -115,13 +131,20 @@ function ago(sec){
 }
 
 function statusCell(n){
-  if(n.status === "active"){
-    const tgs = `<div class="tags">${n.tgs.map(t => `<span class="tg">TG ${t}</span>`).join("")}</div>`;
-    return `<div class="st"><span class="sd active"></span>${tgs}</div>`;
+  if(!n.online)
+    return `<div class="st"><span class="sd offline"></span><span class="mut">offline</span></div>`;
+  const chips = n.tgs.map(t => `<span class="tg">TG ${t}</span>`).join("");
+  const isFM = n.type === "FM";
+  if(n.tgs.length){
+    // online + auf TG:  FM = aktive Bruecke,  TMO/DMO = normaler TG-Betrieb
+    const lead = isFM ? `<span class="brk">Brücke aktiv</span>`
+                      : `Online <span class="mut">·</span>`;
+    return `<div class="st"><span class="sd live"></span>${lead} ${chips}</div>`;
   }
-  if(n.status === "standby")
-    return `<div class="st"><span class="sd standby"></span>online · Standby</div>`;
-  return `<div class="st"><span class="sd offline"></span>offline</div>`;
+  // online, keine TG
+  if(isFM)
+    return `<div class="st"><span class="sd ok"></span>Verfügbar <span class="mut">· keine Brücke</span></div>`;
+  return `<div class="st"><span class="sd ok"></span>Online</div>`;
 }
 
 function render(d){
