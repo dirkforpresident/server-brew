@@ -101,7 +101,7 @@ location /       { try_files $uri $uri/ =404; }
   "blocklist":       [],             // gesperrte Logins/ISSIs (rausschmeißen)
   "echo_gssis":      [9],            // Talkgroups mit Echo-Test
   "broadcast_groups": false,         // nur Ein-Stationen-Test: true = alle hören alles
-  "node_meta":       {},             // Klartext fürs Verzeichnis, Key = Login-Name: "<RadioID|CALL>": {"name":"…","type":"FM","qth":"…"}
+  "node_meta":       {},             // Klartext fürs Verzeichnis, Key = Login-Name: "<RadioID|CALL>": {"name":"…","type":"FM|DMO|TMO","qth":"…"}
   "mesh":            {}              // leer = Standalone. Mesh-Beispiel siehe MESH.md
 }
 ```
